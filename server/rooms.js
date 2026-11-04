@@ -11,6 +11,7 @@ const crypto = require('node:crypto');
 const merge = require('./merge');
 const { recordAttempt, summariseLearning } = require('./marking');
 const { forPupil } = require('./questions');
+const scoreboard = require('./scoreboard');
 
 const ROOM_CODE_LENGTH = 6;
 // Unambiguous alphabet: no O/0, I/1, or similar-looking pairs, because pupils
@@ -331,7 +332,7 @@ class Pupil {
         status: this.room.status,
         roundSeconds: this.room.settings.roundSeconds,
         lessonEndsAt: this.room.lessonEndsAt,
-        leaderboardEnabled: this.room.settings.leaderboardEnabled,
+        publicScoreboard: this.room.settings.publicScoreboard,
       },
       phase: this.phase,
       serverNow: now,
@@ -360,7 +361,7 @@ class Pupil {
       englishOnly: this.englishOnly,
       cyclesCompleted: this.cyclesCompleted,
       roundsPlayed: this.roundsPlayed,
-      leaderboard: this.room.settings.leaderboardEnabled ? this.room.leaderboard() : null,
+      scoreboard: this.room.scoreboardForPupil(this),
     };
   }
 
@@ -436,7 +437,9 @@ class Room {
       roundSeconds: DEFAULT_ROUND_SECONDS,
       lessonMinutes: DEFAULT_LESSON_MINUTES,
       roundAllowance: merge.DEFAULT_ROUND_ALLOWANCE,
-      leaderboardEnabled: false, // public leaderboard is off by default
+      // The full scoreboard on pupils' phones. Off by default; a pupil always
+      // sees their own score and rank regardless.
+      publicScoreboard: false,
       ...options.settings,
     };
     this.lessonEndsAt = null;
@@ -568,8 +571,8 @@ class Room {
         problems.push(`Supply taps per round must be between 4 and ${merge.CHARGE_CAP}.`);
       } else next.roundAllowance = Math.round(value);
     }
-    if (patch.leaderboardEnabled !== undefined) {
-      next.leaderboardEnabled = Boolean(patch.leaderboardEnabled);
+    if (patch.publicScoreboard !== undefined) {
+      next.publicScoreboard = Boolean(patch.publicScoreboard);
     }
     if (problems.length > 0) return { ok: false, problems };
 
@@ -617,17 +620,20 @@ class Room {
     return { ended: false, changed };
   }
 
-  /** Optional, off by default. Shows game progress only, never English marks. */
-  leaderboard() {
-    return this.pupilList()
-      .map((p) => ({
-        displayName: p.displayName,
-        chapter: p.game ? merge.currentChapter(p.game).id : 0,
-        requests: p.game ? p.game.requestsCompleted : 0,
-        coins: p.game ? p.game.coins : 0,
-      }))
-      .sort((a, b) => b.chapter - a.chapter || b.requests - a.requests || b.coins - a.coins)
-      .slice(0, 10);
+  /**
+   * Both live scoreboards. The teacher always sees these; what reaches a
+   * pupil's phone is filtered by scoreboardForPupil.
+   */
+  scoreboard() {
+    return scoreboard.build(this.pupilList());
+  }
+
+  /**
+   * One pupil's view: always their own score and rank, plus the full list only
+   * when the teacher has switched the public scoreboard on.
+   */
+  scoreboardForPupil(pupil) {
+    return scoreboard.forPupil(this.scoreboard(), pupil.id, this.settings.publicScoreboard);
   }
 
   dashboard(now = Date.now()) {
@@ -669,6 +675,7 @@ class Room {
           totals.attempted === 0 ? null : Math.round((totals.firstAttemptCorrect / totals.attempted) * 100),
       },
       pupils,
+      scoreboard: this.scoreboard(),
       serverNow: now,
       questionCount: this.store.count(),
     };

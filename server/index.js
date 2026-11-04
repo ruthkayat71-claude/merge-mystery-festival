@@ -146,12 +146,44 @@ function createApp(config) {
     pushTeachers(room);
   }
 
-  function pushTeachers(room) {
+  /**
+   * Push the dashboard to any watching teacher.
+   *
+   * Building a dashboard walks every pupil and recomputes both scoreboards, so
+   * sending one per pupil action would mean O(class size) work on every tap.
+   * Pushes are coalesced instead: the first is immediate, and anything that
+   * arrives during the window is collapsed into a single trailing update. A
+   * teacher watching a TV cannot perceive the difference.
+   */
+  const TEACHER_PUSH_INTERVAL_MS = 400;
+  const teacherPushState = new Map(); // room code -> { lastAt, timer }
+
+  function sendDashboardNow(room) {
     if (room.teacherChannels.size === 0) return;
     const payload = room.dashboard();
     for (const channel of room.teacherChannels) {
       if (!channel.send('dashboard', payload)) room.teacherChannels.delete(channel);
     }
+  }
+
+  function pushTeachers(room) {
+    if (room.teacherChannels.size === 0) return;
+    const now = Date.now();
+    const entry = teacherPushState.get(room.code) || { lastAt: 0, timer: null };
+    teacherPushState.set(room.code, entry);
+
+    if (now - entry.lastAt >= TEACHER_PUSH_INTERVAL_MS) {
+      entry.lastAt = now;
+      sendDashboardNow(room);
+      return;
+    }
+    if (entry.timer) return; // an update is already queued
+    entry.timer = setTimeout(() => {
+      entry.timer = null;
+      entry.lastAt = Date.now();
+      sendDashboardNow(room);
+    }, TEACHER_PUSH_INTERVAL_MS - (now - entry.lastAt));
+    if (entry.timer.unref) entry.timer.unref();
   }
 
   // -- join URL and QR ----------------------------------------------------
@@ -663,6 +695,10 @@ function createApp(config) {
   function stopTimers() {
     for (const timer of timers) clearInterval(timer);
     timers.length = 0;
+    for (const entry of teacherPushState.values()) {
+      if (entry.timer) clearTimeout(entry.timer);
+    }
+    teacherPushState.clear();
   }
 
   const server = http.createServer((req, res) => {

@@ -1,0 +1,4 @@
+{
+  "//": "Marks the browser scripts in this folder as ES modules. Browsers ignore this file; it exists so Node can import these same files directly in the test suite without guessing.",
+  "type": "module"
+}

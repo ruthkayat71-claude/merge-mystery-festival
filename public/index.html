@@ -26,6 +26,7 @@
     <button type="button" id="btn-map" aria-label="Town map">Map</button>
     <button type="button" id="btn-notebook" aria-label="Detective notebook">Notes</button>
     <button type="button" id="btn-guide" aria-label="Item guide">Items</button>
+    <button type="button" id="btn-scores" aria-label="Scoreboard">Scores</button>
     <button type="button" id="btn-settings" aria-label="Settings">&#9881;</button>
   </header>
 
@@ -134,6 +135,8 @@
           <span class="timer-value" id="timer-value">60s</span>
         </div>
 
+        <div class="score-panel" id="score-panel" aria-label="Your scores"></div>
+
         <div class="resources">
           <div class="resource">
             <span id="icon-charge"></span>
@@ -152,6 +155,11 @@
         </div>
 
         <div class="board-wrap">
+          <div class="board-frame-label">
+            <span class="art-box" id="board-chapter-art" aria-hidden="true"></span>
+            <span id="board-chapter-name">Welcome Square</span>
+            <span class="dash" aria-hidden="true"></span>
+          </div>
           <div class="board" id="board" role="group" aria-label="Merge board, 5 columns by 6 rows"></div>
 
           <div class="tray">
@@ -164,6 +172,7 @@
 
         <div class="row" style="margin-top:0.6rem">
           <button type="button" class="btn-warn grow" id="btn-hint">Hint</button>
+          <button type="button" class="btn-primary grow" id="btn-info" aria-pressed="false">Info</button>
           <button type="button" class="btn-ghost grow" id="btn-recycle">Recycle</button>
           <button type="button" class="btn-stop grow" id="btn-rescue" hidden>Helping hand</button>
         </div>

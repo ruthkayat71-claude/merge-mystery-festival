@@ -473,10 +473,15 @@ function makeMission(game, kind) {
   // Guarantee affordability against a single full allowance.
   while (buildCost(level) > game.chargeCap && level > 1) level--;
 
-  const coins = kind === 'quick' ? 6 * buildCost(level) : 9 * buildCost(level);
+  // The label must describe the job the pupil actually gets. If the preferred
+  // band was unavailable and a small item was chosen instead, calling it a
+  // "longer" job would be wrong, and it would pay more than an identical
+  // "quick" job for the same work.
+  const actualKind = kind === 'bonus' ? 'bonus' : level <= 2 ? 'quick' : 'long';
+  const coins = actualKind === 'quick' ? 6 * buildCost(level) : 9 * buildCost(level);
   return {
     id: `m${game.missionSeq++}`,
-    kind,
+    kind: actualKind,
     family,
     level,
     name: itemName(family, level),

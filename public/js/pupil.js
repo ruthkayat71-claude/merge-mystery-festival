@@ -6,8 +6,9 @@
  */
 
 import {
-  itemArt, sourceArt, characterArt, sceneArt, mapPinArt,
-  clueCardArt, chestArt, coinArt, chargeArt, familyColour, PALETTE,
+  itemArt, sourceArt, characterArt, sceneArt, mapPinArt, shopArt,
+  clueCardArt, chestArt, coinArt, chargeArt, starArt, trophyArt,
+  familyColour, chapterTheme, PALETTE, CHAPTER_CHARACTER,
 } from './art.js';
 
 // ---------------------------------------------------------------------------
@@ -21,6 +22,16 @@ const el = (tag, className, html) => {
   if (html !== undefined) node.innerHTML = html;
   return node;
 };
+/**
+ * Wrap an illustration in a fixed-ratio box.
+ *
+ * An inline SVG with only a viewBox collapses to zero height inside a flex
+ * container on iOS Safari and several Android WebViews, which is what made
+ * board items invisible. The box gets its height from a padding ratio instead,
+ * so the picture always has somewhere to be drawn.
+ */
+const art = (svg, extraClass = '') => `<span class="art-box ${extraClass}">${svg}</span>`;
+
 const esc = (text) =>
   String(text ?? '').replace(/[&<>"']/g, (ch) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])
@@ -47,6 +58,9 @@ const state = {
   seenClues: new Set(),
   shownChapterIntro: new Set(),
   tutorialStep: 0,
+  infoMode: false,
+  scoreTab: 'english',
+  themeKey: null,
   prefs: { sound: true, reducedMotion: false, tutorialDone: false },
   lastStateJson: '',
 };
@@ -266,7 +280,7 @@ function routePhase(data, previous) {
         data.room.status === 'running'
           ? 'Getting your first question ready...'
           : 'Waiting for your teacher to start.';
-      $('wait-art').innerHTML = characterArt('Detective', 'happy');
+      $('wait-art').innerHTML = art(characterArt('Detective', 'happy'));
       break;
     case 'learning':
       showScreen('learning');
@@ -326,7 +340,7 @@ function renderTutorial() {
   const step = TUTORIAL[state.tutorialStep];
   $('tut-title').textContent = step.title;
   $('tut-text').textContent = step.text;
-  $('tut-art').innerHTML = step.art();
+  $('tut-art').innerHTML = art(step.art());
   $('tut-dots').innerHTML = TUTORIAL.map((_, i) =>
     `<span class="${i === state.tutorialStep ? 'on' : ''}"></span>`).join('');
   $('btn-tut-back').disabled = state.tutorialStep === 0;
@@ -536,6 +550,8 @@ function renderPlay(data, previous) {
   $('improve-value').textContent = `${percent}%`;
   $('improve-fill').style.width = `${percent}%`;
 
+  applyChapterTheme(game);
+  renderScorePanel(data);
   renderBoard(game, previous);
   renderTray(game);
   renderSources(game);
@@ -563,7 +579,7 @@ function cellButton(zone, index, item, locked) {
   }
   if (item) {
     button.innerHTML =
-      `<span class="tile">${itemArt(item.family, item.level)}` +
+      `<span class="tile">${art(itemArt(item.family, item.level))}` +
       `<span class="tile-level">${item.level}</span>` +
       `<span class="tile-name">${esc(item.name)}</span></span>`;
     button.setAttribute('aria-label', `${item.name}, level ${item.level}`);
@@ -617,7 +633,7 @@ function renderSources(game) {
     const button = el('button', 'source-btn');
     button.type = 'button';
     button.innerHTML =
-      `${sourceArt(source.family)}<span class="source-name">${esc(source.label)}</span>` +
+      `${art(sourceArt(source.family))}<span class="source-name">${esc(source.label)}</span>` +
       `<span class="source-makes">Makes: ${esc(source.makes)}</span>`;
     button.setAttribute('aria-label', `${source.label}. Makes a ${source.makes}. Uses one supply tap.`);
     if (state.suggestedFamily === source.family) button.classList.add('suggested');
@@ -640,7 +656,7 @@ function renderMissions(game) {
     const card = el('div', `mission ${match ? 'ready' : ''}`);
     const kindLabel = mission.bonus ? 'Bonus' : mission.kind === 'quick' ? 'Quick' : 'Longer';
     card.innerHTML =
-      `${itemArt(mission.family, mission.level)}` +
+      `${art(itemArt(mission.family, mission.level))}` +
       `<span class="mission-info">` +
       `<span class="mission-kind ${mission.bonus ? 'bonus' : mission.kind}">${kindLabel}</span> ` +
       `<span class="mission-name">${esc(mission.name)}</span>` +
@@ -782,7 +798,7 @@ function onPointerMove(event) {
     drag.ref.element.classList.add('drag-source');
     const ghost = el('div', 'tile');
     const item = itemAt(drag.ref);
-    ghost.innerHTML = `${itemArt(item.family, item.level)}<span class="tile-level">${item.level}</span>`;
+    ghost.innerHTML = `${art(itemArt(item.family, item.level))}<span class="tile-level">${item.level}</span>`;
     Object.assign(ghost.style, {
       position: 'fixed', width: '58px', height: '58px', zIndex: '80',
       pointerEvents: 'none', opacity: '0.92',
@@ -823,6 +839,18 @@ function onPointerUp(event) {
 }
 
 function handleTap(ref) {
+  // Info mode turns the next tap into "show me this item", and stays on so a
+  // pupil can look at several items in a row.
+  if (state.infoMode) {
+    const viewed = itemAt(ref);
+    if (!viewed) {
+      toast('Tap an item to see its picture and name.', 'bad');
+      return;
+    }
+    showItemPreview(viewed);
+    return;
+  }
+
   // Recycle mode turns the next tap into a recycle request.
   if (state.recycleMode) {
     const item = itemAt(ref);
@@ -913,17 +941,26 @@ function playEvents(events) {
       sound.play('spawn');
     } else if (event.type === 'merge') {
       flash(event.to, 'anim-merge');
+      mergeRing(event.to);
       sparkleAt(event.to);
       sound.play('merge');
       announce(event.newName ? `${event.newName} made.` : 'Items joined.');
     } else if (event.type === 'deliver') {
       sound.play('deliver');
+      rewardSweep($('missions'));
+    } else if (event.type === 'coins') {
+      rewardSweep($('score-panel'));
+    } else if (event.type === 'improvement') {
+      rewardSweep($('improve-fill').parentElement);
     } else if (event.type === 'unlock') {
       toast('A new board space opened!', 'good');
       flash({ zone: 'board', index: event.index }, 'anim-spawn');
     } else if (event.type === 'chapter-complete') {
       celebrate();
       sound.play('celebrate');
+    } else if (event.type === 'recycle') {
+      coinPop(event.from, `+${event.refund}`);
+      sound.play('good');
     } else if (event.type === 'rescue-clear' || event.type === 'rescue-charges') {
       sound.play('good');
     }
@@ -968,6 +1005,248 @@ function celebrate() {
     host.appendChild(piece);
     setTimeout(() => piece.remove(), 3200);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Chapter look
+// ---------------------------------------------------------------------------
+
+/**
+ * Tint the page, the top bar and the board frame for the current chapter.
+ * Board cells are deliberately left pale and plain: a decorative background
+ * behind the tiles would make matching harder.
+ */
+function applyChapterTheme(game) {
+  if (!game || !game.chapter) return;
+  const key = game.chapter.key;
+  if (state.themeKey === key) return;
+  state.themeKey = key;
+
+  const theme = chapterTheme(key);
+  const root = document.body.style;
+  root.setProperty('--chapter-main', theme.main);
+  root.setProperty('--chapter-soft', theme.soft);
+  root.setProperty('--chapter-softer', theme.softer);
+  root.setProperty('--chapter-accent', theme.accent);
+
+  $('board-chapter-name').textContent = `${game.chapter.id}. ${game.chapter.name}`;
+  $('board-chapter-art').innerHTML = shopArt(key, true);
+}
+
+// ---------------------------------------------------------------------------
+// Compact score panel
+// ---------------------------------------------------------------------------
+
+function rankText(rank, tied) {
+  if (!rank) return '\u2013';
+  return `${tied ? '=' : ''}#${rank}`;
+}
+
+/**
+ * Two short chips above the board: English Stars and Festival Champions.
+ *
+ * Questions attempted is printed next to the English points on purpose. Pupils
+ * work at different speeds, so 30 points from 3 questions and 30 points from
+ * 12 are very different, and the panel should not hide that.
+ */
+function renderScorePanel(data) {
+  const host = $('score-panel');
+  const board = data.scoreboard;
+  if (!board || !board.me) {
+    host.innerHTML = '';
+    return;
+  }
+  const me = board.me;
+  const english = me.english;
+  const game = me.game;
+  const parts = [];
+
+  if (english) {
+    parts.push(
+      `<div class="score-chip">${art(starArt())}<div class="score-body">` +
+      `<div class="score-top"><span>${english.points}</span>` +
+      `<span class="score-rank">${esc(rankText(english.rank, english.tied))}</span></div>` +
+      `<div class="score-label">English Stars &middot; ${english.attempted} asked</div>` +
+      `</div></div>`
+    );
+  }
+  if (game) {
+    parts.push(
+      `<div class="score-chip">${art(trophyArt())}<div class="score-body">` +
+      `<div class="score-top"><span>${game.missions}</span>` +
+      `<span class="score-rank">${esc(rankText(game.rank, game.tied))}</span></div>` +
+      `<div class="score-label">Orders &middot; ${game.coins} coins</div>` +
+      `</div></div>`
+    );
+  }
+  host.innerHTML = parts.join('');
+  host.setAttribute(
+    'aria-label',
+    english
+      ? `Your English Stars: ${english.points} points from ${english.attempted} questions, rank ${english.rank}.` +
+        (game ? ` Festival orders delivered: ${game.missions}, rank ${game.rank}.` : '')
+      : 'Your scores'
+  );
+}
+
+/** One scoreboard table. `rows` may be null when the teacher has it switched off. */
+function scoreTableHtml(kind, rows, pointsPerFirstAttempt) {
+  if (!rows) {
+    return (
+      '<p class="score-empty">Your teacher has not switched on the class scoreboard. ' +
+      'Your own score and rank are always shown above.</p>'
+    );
+  }
+  if (rows.length === 0) return '<p class="score-empty">No scores yet.</p>';
+
+  const header = kind === 'english'
+    ? '<tr><th>Rank</th><th>Detective</th><th class="num">Points</th><th class="num">Asked</th></tr>'
+    : '<tr><th>Rank</th><th>Detective</th><th class="num">Orders</th><th class="num">Coins</th></tr>';
+
+  const body = rows
+    .map((row) => {
+      const rankClass = row.rank <= 3 ? `rank rank-${row.rank}` : 'rank';
+      const cells = kind === 'english'
+        ? `<td class="num">${row.points}</td><td class="num">${row.attempted}</td>`
+        : `<td class="num">${row.missions}</td><td class="num">${row.coins}</td>`;
+      return (
+        `<tr class="${row.isMe ? 'is-me' : ''}">` +
+        `<td><span class="${rankClass}${row.tied ? ' rank-tied' : ''}">${row.rank}</span></td>` +
+        `<td class="score-name">${esc(row.displayName)}</td>${cells}</tr>`
+      );
+    })
+    .join('');
+
+  const note = kind === 'english'
+    ? `<p class="score-sub">${pointsPerFirstAttempt} points for each answer right on the first try.</p>`
+    : '';
+  return `<table class="score-table">${header}${body}</table>${note}`;
+}
+
+/** Full scoreboard sheet, reachable from the top bar. */
+function showScoreboard() {
+  const board = state.data && state.data.scoreboard;
+  if (!board) {
+    showOverlay({ title: 'Scoreboard', bodyHtml: '<p>Scores appear once the lesson starts.</p>' });
+    return;
+  }
+
+  const sheet = showOverlay({
+    title: 'Scoreboard',
+    bodyHtml:
+      `<div class="score-tabs" role="tablist">` +
+      `<button type="button" class="tab-english" role="tab" data-score-tab="english">` +
+      `${art(starArt())}<span>${esc(board.labels.english)}</span></button>` +
+      `<button type="button" class="tab-game" role="tab" data-score-tab="game">` +
+      `${art(trophyArt())}<span>${esc(board.labels.game)}</span></button>` +
+      `</div><div id="score-body"></div>`,
+  });
+
+  const paint = () => {
+    const kind = state.scoreTab;
+    for (const button of sheet.querySelectorAll('[data-score-tab]')) {
+      button.setAttribute('aria-selected', String(button.dataset.scoreTab === kind));
+    }
+    sheet.querySelector('#score-body').innerHTML =
+      `<p class="score-how${kind === 'game' ? ' for-game' : ''}">${esc(board.explanations[kind])}</p>` +
+      scoreTableHtml(kind, board[kind], board.pointsPerFirstAttempt);
+  };
+  for (const button of sheet.querySelectorAll('[data-score-tab]')) {
+    button.addEventListener('click', () => {
+      state.scoreTab = button.dataset.scoreTab;
+      sound.unlock();
+      paint();
+    });
+  }
+  paint();
+}
+
+// ---------------------------------------------------------------------------
+// Item information preview
+// ---------------------------------------------------------------------------
+
+const FAMILY_LABELS = {
+  paper: 'Paper Decorations', flower: 'Flowers', ribbon: 'Gifts', lantern: 'Lights',
+};
+
+/** A large picture of one item, its name, and what it becomes. */
+function showItemPreview(item) {
+  const names = (GUIDE_FAMILIES.find((f) => f.key === item.family) || GUIDE_FAMILIES[0]).names;
+  const nextName = item.level < 5 ? names[item.level] : null;
+
+  const chain = names
+    .map(
+      (name, index) =>
+        `<div class="step ${index + 1 === item.level ? 'here' : ''}">` +
+        `${art(itemArt(item.family, index + 1))}` +
+        `<div class="cap">${esc(name)}</div><div class="cap">L${index + 1}</div></div>`
+    )
+    .join('');
+
+  showOverlay({
+    title: 'Item information',
+    bodyHtml:
+      `${art(itemArt(item.family, item.level), 'preview-art')}` +
+      `<p class="preview-name">${esc(item.name)}</p>` +
+      `<span class="preview-level">Level ${item.level} of 5 &middot; ${esc(FAMILY_LABELS[item.family] || '')}</span>` +
+      (nextName
+        ? `<div class="preview-next">${art(itemArt(item.family, item.level))}<span class="plus">+</span>` +
+          `${art(itemArt(item.family, item.level))}<span class="plus">=</span>` +
+          `${art(itemArt(item.family, item.level + 1))}</div>` +
+          `<p class="center"><strong>Join two of these to make a ${esc(nextName)}.</strong></p>`
+        : '<p class="notice notice-good">This is the biggest one. Deliver it to a town request!</p>') +
+      `<p class="small muted">The whole family:</p><div class="preview-chain">${chain}</div>`,
+  });
+}
+
+function setInfoMode(on) {
+  state.infoMode = on;
+  const button = $('btn-info');
+  button.setAttribute('aria-pressed', String(on));
+  button.classList.toggle('btn-go', on);
+  button.classList.toggle('btn-primary', !on);
+  $('board').classList.toggle('info-mode', on);
+  if (on) {
+    state.recycleMode = false;
+    $('btn-recycle').classList.remove('btn-warn');
+    toast('Tap any item to see a big picture and its name.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reward effects
+// ---------------------------------------------------------------------------
+
+/** A coin value that floats up from a cell. */
+function coinPop(ref, text) {
+  if (state.prefs.reducedMotion) return;
+  const cell = findCell(ref);
+  if (!cell) return;
+  const pop = el('div', 'coin-pop', esc(text));
+  pop.style.left = '50%';
+  pop.style.top = '30%';
+  cell.appendChild(pop);
+  setTimeout(() => pop.remove(), 1000);
+}
+
+/** An expanding ring, used when two items join. */
+function mergeRing(ref) {
+  if (state.prefs.reducedMotion) return;
+  const cell = findCell(ref);
+  if (!cell) return;
+  const ring = el('div', 'merge-ring');
+  cell.appendChild(ring);
+  setTimeout(() => ring.remove(), 600);
+}
+
+/** A light sweep across a panel, used when a reward lands. */
+function rewardSweep(node) {
+  if (!node || state.prefs.reducedMotion) return;
+  node.classList.remove('reward-sweep');
+  // Force a reflow so the animation restarts if it is already running.
+  void node.offsetWidth;
+  node.classList.add('reward-sweep');
+  setTimeout(() => node.classList.remove('reward-sweep'), 1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -1040,7 +1319,7 @@ function showClueCard(clue) {
   const sheet = showOverlay({
     title: clue.title,
     bodyHtml:
-      `<div class="clue-card"><span style="flex:0 0 60px">${clueCardArt()}</span>` +
+      `<div class="clue-card clue-reveal"><span style="flex:0 0 60px">${art(clueCardArt())}</span>` +
       `<div><p class="small muted">From ${esc(clue.from)}</p>${sentences}</div></div>` +
       `<div class="notice notice-info"><strong>${esc(clue.check.prompt)}</strong></div>` +
       `<div class="options" id="clue-options"></div>` +
@@ -1089,7 +1368,7 @@ function showDecorationChoice(choice, game) {
     const button = el('button', 'option-btn', '');
     button.type = 'button';
     button.innerHTML =
-      `<div class="scene-frame">${sceneArt(choice.chapterKey, true, option.id)}</div>` +
+      `<div class="scene-frame">${art(sceneArt(choice.chapterKey, { progress: 100, decoration: option.id }), "art-box-scene")}</div>` +
       `<strong>${esc(option.name)}</strong><br><span class="small muted">${esc(option.note)}</span>`;
     button.addEventListener('click', () => {
       sound.unlock();
@@ -1107,7 +1386,7 @@ function showFinale(game) {
   const sheet = showOverlay({
     title: 'Solve the mystery!',
     bodyHtml:
-      `<div style="max-width:120px;margin:0 auto">${clueCardArt()}</div>` +
+      `<div style="max-width:120px;margin:0 auto">${art(clueCardArt())}</div>` +
       `<p><strong>${esc(game.finale.prompt)}</strong></p>` +
       `<p class="small muted">Your clues:</p><ul class="small">${clueList}</ul>` +
       `<div class="options" id="finale-options"></div>` +
@@ -1134,7 +1413,7 @@ function showFinaleResult(finale) {
     showOverlay({
       title: 'You found the festival chest!',
       bodyHtml:
-        `<div style="max-width:150px;margin:0 auto">${chestArt()}</div>` +
+        `<div style="max-width:150px;margin:0 auto">${art(chestArt())}</div>` +
         `<p style="font-size:1.05rem;font-weight:700">${esc(finale.ending)}</p>` +
         `<p class="notice notice-good">New festival orders are open. Keep playing until your teacher ends the lesson!</p>`,
       actions: [{ label: 'Keep playing', kind: 'btn-go' }],
@@ -1165,7 +1444,7 @@ function showNotebook() {
         .map(
           (clue) =>
             `<div class="clue-card ${clue.solved ? 'solved' : ''}">` +
-            `<span style="flex:0 0 48px">${clueCardArt()}</span><div>` +
+            `<span style="flex:0 0 48px">${art(clueCardArt())}</span><div>` +
             `<p class="small muted">${esc(clue.title)} &middot; from ${esc(clue.from)} &middot; ` +
             `${clue.solved ? 'checked \u2713' : 'not checked yet'}</p>` +
             clue.sentences.map((s) => `<p class="clue-sentences">${esc(s)}</p>`).join('') +
@@ -1182,6 +1461,10 @@ function showNotebook() {
       `<p>Questions answered: <strong>${learning ? learning.attempted : 0}</strong><br>` +
       `Right the first time: <strong>${learning ? learning.firstAttemptCorrect : 0}</strong><br>` +
       `Right after trying again: <strong>${learning ? learning.correctAfterRetry : 0}</strong></p>` +
+      (state.data && state.data.scoreboard && state.data.scoreboard.me.english
+        ? `<p><strong>English Stars: ${state.data.scoreboard.me.english.points} points</strong></p>` +
+          `<p class="score-how">${esc(state.data.scoreboard.explanations.english)}</p>`
+        : '') +
       `<p class="small muted">English and the merge game are counted separately.</p>`,
   });
 }
@@ -1204,7 +1487,7 @@ function showMap() {
       const status = percent >= 100 ? 'done' : current ? 'current' : 'locked';
       const label = percent >= 100 ? 'Fixed' : current ? 'Now' : 'Later';
       return (
-        `<div class="map-stop">${mapPinArt(status)}` +
+        `<div class="map-stop">${art(mapPinArt(status))}` +
         `<div class="map-name">${index + 1}. ${esc(names[key])}</div>` +
         `<div class="map-state">${label} &middot; ${percent}%</div></div>`
       );
@@ -1212,15 +1495,16 @@ function showMap() {
     .join('');
 
   const key = game.chapter.key;
-  const restored = (game.improvements[key] || 0) >= 100;
+  const percentNow = game.improvements[key] || 0;
+  const restored = percentNow >= 100;
   showOverlay({
     title: 'Town map',
     bodyHtml:
       `<div class="map-grid">${pins}</div>` +
       `<h3 style="margin-top:0.8rem">${esc(game.chapter.name)}</h3>` +
       `<div class="before-after">` +
-      `<figure><div class="scene-frame">${sceneArt(key, false)}</div><figcaption>Before</figcaption></figure>` +
-      `<figure><div class="scene-frame">${sceneArt(key, restored, game.decorations[key])}</div>` +
+      `<figure><div class="scene-frame">${art(sceneArt(key, { progress: 0 }), "art-box-scene")}</div><figcaption>Before</figcaption></figure>` +
+      `<figure><div class="scene-frame">${art(sceneArt(key, { progress: percentNow, decoration: game.decorations[key] }), "art-box-scene")}</div>` +
       `<figcaption>${restored ? 'After \u2713' : 'Your goal'}</figcaption></figure>` +
       `</div><p class="small muted">${esc(game.chapter.intro)}</p>`,
   });
@@ -1239,7 +1523,7 @@ function showGuide() {
     const chain = family.names
       .map(
         (name, index) =>
-          `<div class="guide-step">${itemArt(family.key, index + 1)}` +
+          `<div class="guide-step">${art(itemArt(family.key, index + 1))}` +
           `<div class="guide-name">${esc(name)}</div><div class="small muted">L${index + 1}</div></div>`
       )
       .join('<span class="guide-arrow">&rarr;</span>');
@@ -1309,7 +1593,7 @@ function askRecycle(ref, item) {
   showOverlay({
     title: 'Recycle this item?',
     bodyHtml:
-      `<div style="max-width:100px;margin:0 auto">${itemArt(item.family, item.level)}</div>` +
+      `<div style="max-width:100px;margin:0 auto">${art(itemArt(item.family, item.level))}</div>` +
       `<p class="center"><strong>${esc(item.name)}</strong> (level ${item.level})</p>` +
       `<p>It will be removed from the board. You get <strong>${item.level * 2} coins</strong>.</p>`,
     actions: [
@@ -1342,11 +1626,36 @@ async function doHint() {
 // Ended screen
 // ---------------------------------------------------------------------------
 
+/** Separate English and game winners on the finish screen. */
+function winnersHtml(board) {
+  if (!board || !board.winners) return '';
+  const list = (rows, score) =>
+    rows.length === 0
+      ? '<p class="winner-score">Nobody yet</p>'
+      : rows
+          .map((row) => `<p class="winner-name">${esc(row.displayName)}</p><p class="winner-score">${esc(score(row))}</p>`)
+          .join('');
+  return (
+    '<div class="winner-grid">' +
+    `<div class="winner-card english">${art(starArt())}<h3>${esc(board.labels.english)}</h3>` +
+    list(board.winners.english, (r) => `${r.points} points from ${r.attempted} questions`) +
+    '</div>' +
+    `<div class="winner-card game">${art(trophyArt())}<h3>${esc(board.labels.game)}</h3>` +
+    list(board.winners.game, (r) => `${r.missions} orders, ${r.coins} coins`) +
+    '</div></div>' +
+    '<p class="small muted center">Two different prizes: one for English, one for the festival. ' +
+    'Equal scores share a place.</p>'
+  );
+}
+
 function renderEnded(data) {
-  $('ended-art').innerHTML = data.game && data.game.finaleSolved ? chestArt() : characterArt('Mayor Ploy', 'cheer');
+  $('ended-art').innerHTML = art(
+    data.game && data.game.finaleSolved ? chestArt() : characterArt('Mayor Ploy', 'cheer')
+  );
   const learning = data.learning;
   const game = data.game;
   $('ended-summary').innerHTML =
+    winnersHtml(data.scoreboard) +
     `<div class="card stack"><h3>English today</h3>` +
     `<p>Questions answered: <strong>${learning.attempted}</strong><br>` +
     `Right the first time: <strong>${learning.firstAttemptCorrect}</strong><br>` +
@@ -1404,9 +1713,9 @@ async function boot() {
   loadPrefs();
   loadSession();
 
-  $('join-art').innerHTML = characterArt('Detective', 'happy');
-  $('icon-coin').innerHTML = coinArt();
-  $('icon-charge').innerHTML = chargeArt();
+  $('join-art').innerHTML = art(characterArt('Detective', 'happy'));
+  $('icon-coin').innerHTML = art(coinArt());
+  $('icon-charge').innerHTML = art(chargeArt());
 
   const urlCode = roomCodeFromUrl();
   if (urlCode) $('input-room').value = urlCode;
@@ -1429,9 +1738,15 @@ async function boot() {
   $('btn-hint').addEventListener('click', () => { sound.unlock(); doHint(); });
   $('btn-recycle').addEventListener('click', () => {
     state.recycleMode = !state.recycleMode;
+    if (state.recycleMode && state.infoMode) setInfoMode(false);
     $('btn-recycle').classList.toggle('btn-warn', state.recycleMode);
     toast(state.recycleMode ? 'Now tap the item you want to recycle.' : 'Recycle cancelled.');
   });
+  $('btn-info').addEventListener('click', () => {
+    sound.unlock();
+    setInfoMode(!state.infoMode);
+  });
+  $('btn-scores').addEventListener('click', showScoreboard);
   $('btn-rescue').addEventListener('click', () => sendAction({ type: 'rescue' }));
   $('btn-notebook').addEventListener('click', showNotebook);
   $('btn-map').addEventListener('click', showMap);

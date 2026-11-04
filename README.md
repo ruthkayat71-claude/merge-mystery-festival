@@ -26,12 +26,14 @@ repository and its own deployment, and it does not touch anything else.
 5. [What survives what](#what-survives-what)
 6. [The QR code](#the-qr-code)
 7. [The game](#the-game)
-8. [The English questions](#the-english-questions)
-9. [Accessibility and phones](#accessibility-and-phones)
-10. [Security](#security)
-11. [Running it on your own computer](#running-it-on-your-own-computer)
-12. [Tests](#tests)
-13. [How the code is arranged](#how-the-code-is-arranged)
+8. [The live scoreboards](#the-live-scoreboards)
+9. [Graphics](#graphics)
+10. [The English questions](#the-english-questions)
+11. [Accessibility and phones](#accessibility-and-phones)
+12. [Security](#security)
+13. [Running it on your own computer](#running-it-on-your-own-computer)
+14. [Tests](#tests)
+15. [How the code is arranged](#how-the-code-is-arranged)
 
 ---
 
@@ -300,6 +302,119 @@ filling whatever is left. Shorten it with 30-second rounds, or stretch it with
 
 ---
 
+## The live scoreboards
+
+Two boards, updating by themselves, on the dashboard and in TV view. They are
+computed from completely separate data and shown under two clearly labelled
+tabs.
+
+### English Stars
+
+**10 points for every answer correct on the first attempt.**
+
+Retries stay exactly as they were: a pupil still gets a second try, still sees
+the explanation, and their correction is still recorded and shown. It simply
+earns no scoreboard points, so nobody can climb the board by guessing
+repeatedly. No question can ever score twice.
+
+**Questions attempted is printed next to the points**, on the dashboard, on the
+TV and on each pupil's phone. Pupils work at different speeds, and 30 points
+from 3 questions is a different achievement from 30 points out of 12. The board
+shows both numbers rather than hiding that behind a rank.
+
+### Festival Champions
+
+Festival **orders delivered**, with **coins** as the only tie-break. Both
+numbers are shown. Nothing from the English side affects this board, and
+nothing from this board affects English Stars.
+
+### Ranking rules
+
+- **Equal scores always share a rank.** Standard competition ranking, so the
+  order reads 1, 2, 2, 4 rather than 1, 2, 2, 3. Every member of a shared rank
+  is marked with an `=`.
+- **Answer speed is never used**, on either board. The English scoreboard is
+  given no timing data at all, so it could not rank on speed even by accident.
+- Within one shared rank, names are listed alphabetically purely so the screen
+  does not jump about. That order carries no meaning.
+- Each board prints its own rule in plain English on screen, next to the table.
+
+### What pupils see
+
+A compact two-chip panel above the board shows **their own** points, rank,
+questions attempted, orders and coins. It is two short rows and never overlaps
+the grid.
+
+The **full class list** is a separate thing, controlled by one switch on the
+dashboard: *Class scoreboard on pupils' phones*, **off by default**. A pupil
+always sees their own score and rank; the switch decides whether they can also
+see everyone else's. Published rows carry names and scores only, never retry
+counts, accuracy, connection status or pupil ids.
+
+Your dashboard and TV view always show the full boards.
+
+### At the end
+
+The finish screen shows **two separate winners**: one English Stars winner and
+one Festival Champions winner, on their own cards. If scores are tied there is
+more than one winner, which is treated as normal rather than broken.
+
+---
+
+## Graphics
+
+An original illustrated style aimed at Primary 4-6, drawn entirely as inline
+SVG in the browser. **No images, no fonts, no third-party service, no paid
+assets.** The whole art set is bundled with the project as code, so it loads
+reliably and stays sharp at any zoom on any phone.
+
+### Items
+
+Four families of five levels, **20 distinct illustrations**. Each level has a
+different silhouette rather than being a recoloured or resized version of its
+neighbour, so a pupil can match two tiles at a glance. Every shape carries a
+dark outline so it reads against the cell background at about 40 px across, and
+a light highlight gives depth without gradients or filters.
+
+Automated tests assert that all 20 are unique, that each has at least four
+drawing commands, and that levels within a family stay distinguishable **after
+every colour is stripped out** - so nothing depends on colour alone.
+
+### Characters, shops and locations
+
+Five townspeople with eyebrows, cheeks, accessories and **four readable
+expressions** each. Five detailed shop fronts, one per chapter.
+
+Each of the five locations is drawn at **five stages of restoration**. As
+missions are completed the scene gains colour, planting, decorations, lanterns
+and finally a completion flag, so the improvement is visible rather than just a
+percentage. The map screen shows the untouched "before" beside the current
+state.
+
+### Chapter identity
+
+Each chapter has its own colour scheme that tints the page, the top bar and the
+frame around the board. **Board cells stay pale and plain on purpose** - a
+decorative background behind the tiles would make matching harder, which is the
+opposite of the point. A test asserts no chapter colour is ever applied to
+`.board` or any `.cell` rule.
+
+### Effects
+
+Merge burst and expanding ring, gentle sparkles, item pop-in, a shake with a
+plain-English message for a refused merge, floating coin rewards, a light sweep
+when a reward lands, confetti at a chapter end, and a card-flip reveal for clue
+cards. All of them are skipped when reduced motion is on.
+
+### Item information
+
+An **Info** button turns the next tap into "tell me about this". The pupil gets
+a large picture, the item's name, its level out of five, what two of them make,
+and the whole family chain with their current position marked. The board itself
+is left alone, so the information never gets in the way of playing.
+
+---
+
 ## The English questions
 
 **97 original questions**, one shared bank for all grades, running from easy
@@ -376,7 +491,7 @@ to keep a copy.
 
 ### Lightweight on purpose
 
-The whole pupil app is **about 28 KB compressed** (110 KB uncompressed) with
+The whole pupil app is **about 42 KB compressed** (154 KB uncompressed) with
 **no images, no fonts and no third-party scripts**. All artwork is original SVG
 drawn in the browser. Text responses are served with brotli or gzip.
 
@@ -405,8 +520,9 @@ drawn in the browser. Text responses are served with brotli or gzip.
   Duplicates become `Mali`, `Mali (2)`, `Mali (3)`.
 - CSV exports neutralise spreadsheet formula injection: any cell beginning
   `= + - @ |`, a tab or a return is prefixed with an apostrophe.
-- A public leaderboard exists but is **off by default**, and when on it shows
-  only game progress — never English marks.
+- The class scoreboard on pupils' phones is **off by default**. When on, it
+  publishes names and scores only — never retry counts, accuracy, connection
+  status or pupil ids. A pupil's own score and rank are always their own data.
 
 ---
 
@@ -435,10 +551,11 @@ LAN address as `PUBLIC_BASE_URL`.
 ## Tests
 
 ```bash
-npm test             # 203 automated tests
+npm test             # 248 automated tests
 npm run test:load    # 45 simulated simultaneous pupils
 node tools/pacing.js # lesson-length estimate
 bash tools/smoke.sh  # end-to-end check against a running server
+node tools/verify-art.mjs   # confirm every item picture renders in gameplay
 ```
 
 See [docs/TESTING.md](docs/TESTING.md) for exactly what was tested, what failed
@@ -460,6 +577,7 @@ extra library.
 server/
   index.js         HTTP routing, all endpoints, timers, entry point
   rooms.js         rooms, pupils, the learning/merge cycle, server timers
+  scoreboard.js    the two scoreboards, ranking and winners
   merge.js         board, items, missions, economy, chapters, clues, ending
   questions.js     the 97-question bank and its validator
   marking.js       answer normalisation and marking
@@ -472,11 +590,13 @@ server/
 public/
   index.html       pupil app
   teacher.html     teacher dashboard
-  js/art.js        all original artwork, drawn as SVG in the browser
+  js/palette.js    shared colours and the per-chapter themes
+  js/items.js      the 20 item illustrations
+  js/art.js        characters, shops, locations, icons and effects
   js/pupil.js      pupil logic, board gestures, animations
   js/teacher.js    dashboard logic
   css/             design tokens, pupil styles, dashboard styles
-tests/             203 automated tests, plus the load test
-tools/             password hasher, pacing simulator, smoke test
+tests/             248 automated tests, plus the load test
+tools/             password hasher, pacing simulator, smoke test, art verifier
 docs/              teacher guide, testing report
 ```

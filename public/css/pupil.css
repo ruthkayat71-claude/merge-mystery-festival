@@ -92,6 +92,9 @@ body.pupil {
 .cell {
   position: relative;
   aspect-ratio: 1 / 1;
+  /* Fallback for browsers without aspect-ratio, where the cell would otherwise
+     have no height at all and the whole board would vanish. */
+  min-height: 56px;
   border: 3px solid var(--line);
   border-radius: 14px;
   background: var(--surface-2);
@@ -154,7 +157,9 @@ body.pupil {
   padding: 1px;
   pointer-events: none;
 }
-.tile .art { width: 76%; }
+/* The picture gets its own fixed-ratio box, so it can never collapse. */
+.tile .art-box { width: 74%; padding-bottom: 74%; }
+.tile .art { width: 100%; }
 .tile .tile-name {
   font-size: 0.5rem;
   font-weight: 800;
@@ -474,4 +479,211 @@ body.pupil {
 @media (orientation: landscape) and (min-width: 700px) {
   .app { max-width: 900px; }
   .play-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 0.8rem; align-items: start; }
+}
+
+/* ==========================================================================
+   Chapter theming
+   Each chapter tints the page, the top bar and the board frame, so a glance
+   tells a pupil where in the story they are. Board CELLS stay pale and plain
+   on purpose: a decorative background behind the tiles would make matching
+   harder, which is the opposite of what we want.
+   ========================================================================== */
+
+body.pupil {
+  --chapter-main: var(--purple);
+  --chapter-soft: #efe7ff;
+  --chapter-softer: #f7f3ff;
+  --chapter-accent: var(--yellow);
+  background:
+    radial-gradient(circle at 12% 4%, var(--chapter-softer) 0 26%, transparent 26%),
+    radial-gradient(circle at 88% 12%, var(--chapter-soft) 0 20%, transparent 20%),
+    linear-gradient(170deg, var(--chapter-softer) 0%, var(--chapter-soft) 100%);
+  transition: background-color calc(600ms * var(--speed)) ease;
+}
+
+.topbar { border-bottom-color: var(--chapter-main); }
+
+.board-wrap {
+  border-color: var(--ink);
+  background: var(--surface);
+  /* The themed tint sits in the frame around the grid, never behind a tile. */
+  box-shadow: inset 0 0 0 6px var(--chapter-soft), var(--shadow);
+  padding: 0.75rem 0.6rem 0.6rem;
+}
+
+.board-frame-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: -0.2rem 0 0.5rem;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+.board-frame-label .art-box { width: 26px; flex: 0 0 26px; padding-bottom: 26px; }
+.board-frame-label .dash {
+  flex: 1 1 auto;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--chapter-main);
+  opacity: 0.35;
+}
+
+/* Cells keep a plain, high-contrast background whatever the chapter. */
+.cell.filled { background: var(--paper); border-color: var(--ink); }
+.cell.empty { background: #f1f0f6; border-color: var(--line); }
+
+/* ==========================================================================
+   Compact score panel on the phone
+   Sits above the board, two short rows, so it never competes with the grid.
+   ========================================================================== */
+
+.score-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+.score-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.5rem;
+  min-width: 0;
+}
+.score-chip .art-box { width: 26px; flex: 0 0 26px; padding-bottom: 26px; }
+.score-chip .score-body { min-width: 0; }
+.score-chip .score-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+.score-chip .score-rank {
+  font-size: 0.72rem;
+  font-weight: 900;
+  background: var(--chapter-accent);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 0.3rem;
+  white-space: nowrap;
+}
+.score-chip .score-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.score-panel-wide { grid-column: 1 / -1; }
+
+/* ==========================================================================
+   Item preview sheet
+   ========================================================================== */
+
+.preview-art {
+  width: 62%;
+  max-width: 200px;
+  margin: 0 auto 0.6rem;
+  padding-bottom: 62%;
+}
+.preview-name { font-size: 1.35rem; font-weight: 900; text-align: center; margin: 0; }
+.preview-level {
+  display: block;
+  text-align: center;
+  font-weight: 800;
+  color: var(--ink-soft);
+  margin-bottom: 0.6rem;
+}
+.preview-next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  background: var(--surface-2);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.6rem;
+}
+.preview-next .art-box { width: 52px; flex: 0 0 52px; padding-bottom: 52px; }
+.preview-next .plus { font-size: 1.4rem; font-weight: 900; }
+.preview-chain {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  overflow-x: auto;
+  padding: 0.3rem 0;
+}
+.preview-chain .step { flex: 0 0 56px; text-align: center; }
+.preview-chain .step .art-box { width: 40px; margin: 0 auto; padding-bottom: 40px; }
+.preview-chain .step.here { outline: 3px solid var(--purple); border-radius: 10px; }
+.preview-chain .step .cap { font-size: 0.54rem; font-weight: 800; line-height: 1.1; }
+
+/* Info mode makes every tile look tappable for information. */
+.board.info-mode .cell.filled { box-shadow: 0 0 0 3px var(--turquoise); }
+
+/* ==========================================================================
+   Extra reward and reveal effects
+   ========================================================================== */
+
+@keyframes coin-rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translateY(-46px) scale(1.1); opacity: 0; }
+}
+.coin-pop {
+  position: absolute;
+  z-index: 5;
+  font-weight: 900;
+  font-size: 0.95rem;
+  color: var(--yellow-dark);
+  text-shadow: 0 2px 0 var(--ink);
+  pointer-events: none;
+  animation: coin-rise calc(900ms * var(--speed)) ease-out forwards;
+}
+
+@keyframes ring-pulse {
+  0% { transform: scale(0.4); opacity: 0.9; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.merge-ring {
+  position: absolute;
+  inset: 6%;
+  border: 4px solid var(--yellow);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 3;
+  animation: ring-pulse calc(520ms * var(--speed)) ease-out forwards;
+}
+
+@keyframes clue-reveal {
+  0% { transform: perspective(700px) rotateY(85deg) scale(0.8); opacity: 0; }
+  60% { transform: perspective(700px) rotateY(-8deg) scale(1.03); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+.clue-reveal { animation: clue-reveal calc(700ms * var(--speed)) ease-out; }
+
+@keyframes glow-sweep {
+  0% { background-position: -140% 0; }
+  100% { background-position: 240% 0; }
+}
+.reward-sweep {
+  background-image: linear-gradient(100deg, transparent 38%, rgba(255, 255, 255, 0.75) 50%, transparent 62%);
+  background-size: 220% 100%;
+  background-repeat: no-repeat;
+  animation: glow-sweep calc(900ms * var(--speed)) ease-out;
+}
+
+/* Small phones: keep the additions compact. */
+@media (max-width: 360px) {
+  .score-chip .score-top { font-size: 0.95rem; }
+  .score-chip .art-box { width: 22px; flex: 0 0 22px; padding-bottom: 22px; }
+  .board-wrap { padding: 0.6rem 0.45rem 0.5rem; }
+  .board-frame-label { font-size: 0.68rem; }
 }

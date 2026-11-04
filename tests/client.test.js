@@ -11,7 +11,7 @@
  * Visual layout and touch behaviour on real phones still need a human check.
  */
 
-const test = require('node:test');
+const { test, before } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -28,18 +28,18 @@ const commonCss = read('css/common.css');
 const pupilCss = read('css/pupil.css');
 const teacherCss = read('css/teacher.css');
 
-/** Load art.js, which is an ES module, into this CommonJS test. */
-function loadArt() {
-  const source = artJs.replace(/^export /gm, '');
-  const names = [
-    'PALETTE', 'familyColour', 'itemArt', 'sourceArt', 'characterArt', 'sceneArt',
-    'mapPinArt', 'clueCardArt', 'chestArt', 'coinArt', 'chargeArt', 'CHARACTER_NAMES',
-  ];
-  // eslint-disable-next-line no-new-func
-  return new Function(`${source}\nreturn {${names.join(',')}};`)();
-}
+/**
+ * The art modules are real ES modules, so they are imported exactly as the
+ * browser imports them. That means these tests exercise the shipped code
+ * rather than a transformed copy of it.
+ */
+const { pathToFileURL } = require('node:url');
+const artPath = pathToFileURL(path.join(PUBLIC, 'js', 'art.js')).href;
 
-const art = loadArt();
+let art;
+before(async () => {
+  art = await import(artPath);
+});
 
 // ---------------------------------------------------------------------------
 // Minimal XML well-formedness checker for the generated SVG
@@ -453,4 +453,344 @@ test('the dashboard explains the QR code and never claims a phone test passed', 
   assert.match(teacherJs, /scan it once with a real phone/, 'the human check is requested');
   assert.match(teacherJs, /software check only/, 'the automated check is not oversold');
   assert.match(teacherHtml, /PUBLIC_BASE_URL/, 'the localhost fix is explained');
+});
+
+// ===========================================================================
+// Regression tests for the invisible-item bug
+// ===========================================================================
+
+const itemsJs = read('js/items.js');
+const paletteJs = read('js/palette.js');
+
+test('every SVG carries explicit width and height, not just a viewBox', () => {
+  // An inline SVG with only a viewBox collapses to zero height inside a flex
+  // container on iOS Safari and several Android WebViews. That is exactly what
+  // made board items invisible while their name and level badge still showed.
+  const samples = [
+    art.itemArt('paper', 1), art.itemArt('flower', 5), art.itemArt('ribbon', 3),
+    art.itemArt('lantern', 4), art.sourceArt('paper'), art.characterArt('Miss Nin'),
+    art.sceneArt('market', true), art.mapPinArt('done'), art.clueCardArt(),
+    art.chestArt(), art.coinArt(), art.chargeArt(), art.starArt(), art.trophyArt(),
+    art.shopArt('cafe'),
+  ];
+  for (const svg of samples) {
+    assert.match(svg, /\bwidth="\d+"/, `missing width attribute: ${svg.slice(0, 80)}`);
+    assert.match(svg, /\bheight="\d+"/, `missing height attribute: ${svg.slice(0, 80)}`);
+    assert.match(svg, /\bviewBox="0 0 \d+ \d+"/, 'viewBox is still present for scaling');
+    assert.match(svg, /preserveAspectRatio="xMidYMid meet"/, 'aspect ratio is pinned');
+  }
+});
+
+test('the fixed-ratio art box exists and cannot collapse', () => {
+  const box = commonCss.match(/\.art-box\s*\{[^}]*\}/);
+  assert.ok(box, '.art-box rule exists');
+  assert.match(box[0], /position:\s*relative/);
+  assert.match(box[0], /padding-bottom:\s*100%/, 'height comes from a padding ratio');
+  assert.match(box[0], /height:\s*0/);
+
+  const inner = commonCss.match(/\.art-box > \.art,\s*\.art-box > svg\s*\{[^}]*\}/);
+  assert.ok(inner, 'the SVG inside the box is positioned');
+  assert.match(inner[0], /position:\s*absolute/);
+  assert.match(inner[0], /height:\s*100%/, 'the SVG fills the box, not the other way round');
+
+  assert.match(commonCss, /\.art-box-scene\s*\{\s*padding-bottom:\s*60%/, 'scenes use a 200x120 ratio');
+});
+
+test('board tiles place their picture inside an art box', () => {
+  assert.match(pupilCss, /\.tile \.art-box\s*\{[^}]*padding-bottom:/, 'tile art has a ratio box');
+  // The helper must be used everywhere an illustration is injected, so no call
+  // site can reintroduce a bare, collapsible SVG.
+  assert.match(pupilJs, /^const art = \(svg, extraClass = ''\) =>/m, 'the art() helper exists');
+  const bareCalls = pupilJs.match(
+    /\$\{(?:itemArt|sourceArt|characterArt|sceneArt|mapPinArt|clueCardArt|chestArt|coinArt|chargeArt|starArt|trophyArt)\(/g
+  );
+  assert.strictEqual(
+    bareCalls,
+    null,
+    `these illustrations are injected without art(): ${(bareCalls || []).join(', ')}`
+  );
+});
+
+test('the board survives a browser with no aspect-ratio support', () => {
+  assert.match(
+    commonCss,
+    /@supports not \(aspect-ratio: 1 \/ 1\)/,
+    'a fallback exists for browsers without aspect-ratio'
+  );
+  const fallback = commonCss.slice(commonCss.indexOf('@supports not (aspect-ratio'));
+  assert.match(fallback, /padding-bottom:\s*100%/, 'the fallback gives the cell a height');
+  // And a floor height, so the cell is never zero even mid-layout.
+  const cellRule = pupilCss.match(/\.cell\s*\{[^}]*\}/)[0];
+  assert.match(cellRule, /min-height:\s*\d+px/, 'cells have a minimum height');
+});
+
+// ===========================================================================
+// Graphics quality
+// ===========================================================================
+
+test('all 20 item illustrations are distinct, detailed and outlined', () => {
+  const seen = new Map();
+  for (const family of ['paper', 'flower', 'ribbon', 'lantern']) {
+    for (let level = 1; level <= 5; level++) {
+      const svg = art.itemArt(family, level);
+      const label = `${family} L${level}`;
+
+      assert.strictEqual(checkXml(svg), null, `${label}: ${checkXml(svg)}`);
+      // A recognisable illustration, not a plain symbol.
+      const shapes = (svg.match(/<(path|circle|rect|polygon|ellipse|polyline)\b/g) || []).length;
+      assert.ok(shapes >= 4, `${label} only has ${shapes} shapes, which is too plain`);
+      // A dark outline so it reads against any cell background.
+      assert.ok(svg.includes('#15193a'), `${label} has no outline colour`);
+
+      const body = svg.replace(/<svg[^>]*>|<\/svg>/g, '');
+      assert.ok(!seen.has(body), `${label} reuses the drawing of ${seen.get(body)}`);
+      seen.set(body, label);
+    }
+  }
+  assert.strictEqual(seen.size, 20, 'all 20 item pictures are unique');
+});
+
+test('levels within a family differ in silhouette, not only in colour', () => {
+  for (const family of ['paper', 'flower', 'ribbon', 'lantern']) {
+    const shapeCounts = [];
+    for (let level = 1; level <= 5; level++) {
+      const svg = art.itemArt(family, level);
+      // Strip every colour, leaving only the geometry.
+      const geometry = svg
+        .replace(/(?:fill|stroke)="[^"]*"/g, '')
+        .replace(/<svg[^>]*>|<\/svg>/g, '');
+      shapeCounts.push(geometry);
+    }
+    assert.strictEqual(
+      new Set(shapeCounts).size,
+      5,
+      `${family} levels are distinguishable only by colour, which fails the colour-alone rule`
+    );
+  }
+});
+
+test('locations show visible improvement at every stage of a chapter', () => {
+  for (const key of ['welcome', 'cafe', 'garden', 'market', 'stage']) {
+    const stages = [0, 25, 50, 75, 100].map((progress) =>
+      art.sceneArt(key, { progress, decoration: null })
+    );
+    for (const stage of stages) {
+      assert.strictEqual(checkXml(stage), null, `${key}: ${checkXml(stage)}`);
+    }
+    assert.strictEqual(
+      new Set(stages).size,
+      5,
+      `${key} looks the same at two different progress levels, so improvement is invisible`
+    );
+    // The finished version must be richer than the untouched one.
+    const shapesAt = (svg) => (svg.match(/<(path|circle|rect|polygon|ellipse)\b/g) || []).length;
+    assert.ok(
+      shapesAt(stages[4]) > shapesAt(stages[0]),
+      `${key} does not gain detail as it is restored`
+    );
+  }
+});
+
+test('each chapter has its own colour scheme', () => {
+  const keys = ['welcome', 'cafe', 'garden', 'market', 'stage'];
+  const mains = keys.map((key) => art.chapterTheme(key).main);
+  assert.strictEqual(new Set(mains).size, 5, 'every chapter has a different main colour');
+  for (const key of keys) {
+    const theme = art.chapterTheme(key);
+    for (const field of ['main', 'soft', 'softer', 'accent', 'name']) {
+      assert.ok(theme[field], `${key} theme is missing ${field}`);
+    }
+    assert.match(theme.main, /^#[0-9a-f]{6}$/i);
+  }
+  assert.match(pupilJs, /function applyChapterTheme/, 'the client applies the theme');
+  assert.match(pupilCss, /--chapter-main/, 'the theme is wired through CSS variables');
+});
+
+test('the chapter tint never sits behind a board tile', () => {
+  // The themed colour belongs to the frame around the grid. If it were applied
+  // to .cell or .board, items would be harder to tell apart.
+  const boardRule = pupilCss.match(/\.board\s*\{[^}]*\}/)[0];
+  assert.ok(!boardRule.includes('--chapter'), 'the grid itself is not tinted');
+
+  const cellRules = pupilCss.match(/\.cell(?:\.\w+)?\s*\{[^}]*\}/g) || [];
+  for (const rule of cellRules) {
+    assert.ok(!rule.includes('--chapter'), `a cell rule is themed: ${rule.slice(0, 60)}`);
+  }
+  // Filled cells keep a plain pale background for maximum contrast.
+  assert.match(pupilCss, /\.cell\.filled\s*\{[^}]*background:\s*var\(--paper\)/);
+  // Any .board-wrap rule may carry the tint; a later one only tweaks padding.
+  const frameRules = pupilCss.match(/\.board-wrap\s*\{[^}]*\}/g);
+  assert.ok(
+    frameRules.some((rule) => rule.includes('--chapter-soft')),
+    'the frame around the grid carries the chapter colour instead'
+  );
+});
+
+test('characters have several readable expressions and detailed shops exist', () => {
+  for (const name of art.CHARACTER_NAMES) {
+    const moods = ['happy', 'thinking', 'cheer', 'worried'].map((mood) =>
+      art.characterArt(name, mood)
+    );
+    for (const svg of moods) assert.strictEqual(checkXml(svg), null, `${name}: ${checkXml(svg)}`);
+    assert.strictEqual(new Set(moods).size, 4, `${name} does not change expression`);
+    // Eyebrows, cheeks and a mouth, so the face actually reads.
+    assert.ok(moods[0].length > 1200, `${name} is drawn too plainly`);
+  }
+  for (const key of ['welcome', 'cafe', 'garden', 'market', 'stage']) {
+    const shop = art.shopArt(key, true);
+    assert.strictEqual(checkXml(shop), null, `${key} shop: ${checkXml(shop)}`);
+    assert.ok(shop.includes('viewBox'), 'shops scale');
+  }
+  assert.strictEqual(
+    new Set(['welcome', 'cafe', 'garden', 'market', 'stage'].map((k) => art.shopArt(k, true))).size,
+    5,
+    'each chapter has its own shop front'
+  );
+});
+
+test('merge, sparkle, reward and clue-reveal effects all exist', () => {
+  for (const [name, selector] of [
+    ['merge burst', '@keyframes merge-burst'],
+    ['item appearing', '@keyframes pop-in'],
+    ['sparkles', '@keyframes sparkle-fly'],
+    ['refusal shake', '@keyframes shake-no'],
+    ['confetti', '@keyframes confetti-fall'],
+    ['merge ring', '@keyframes ring-pulse'],
+    ['coin reward', '@keyframes coin-rise'],
+    ['clue card reveal', '@keyframes clue-reveal'],
+    ['reward sweep', '@keyframes glow-sweep'],
+  ]) {
+    assert.ok(
+      (commonCss + pupilCss).includes(selector),
+      `the ${name} effect (${selector}) is missing`
+    );
+  }
+  // And every one of them is driven from the client.
+  for (const fn of ['mergeRing', 'coinPop', 'rewardSweep', 'sparkleAt', 'celebrate']) {
+    assert.ok(pupilJs.includes(`function ${fn}`), `${fn} is not implemented`);
+  }
+  // All of them must respect the reduced-motion choice.
+  for (const fn of ['mergeRing', 'coinPop', 'celebrate', 'sparkleAt']) {
+    const body = pupilJs.slice(pupilJs.indexOf(`function ${fn}`), pupilJs.indexOf(`function ${fn}`) + 400);
+    assert.match(body, /reducedMotion/, `${fn} ignores the reduced-motion setting`);
+  }
+});
+
+test('the item information preview shows a large picture and the item name', () => {
+  assert.match(pupilJs, /function showItemPreview/, 'the preview exists');
+  const body = pupilJs.slice(pupilJs.indexOf('function showItemPreview'), pupilJs.indexOf('function setInfoMode'));
+  assert.match(body, /preview-art/, 'a large picture is rendered');
+  assert.match(body, /preview-name/, 'the name is rendered');
+  assert.match(body, /Level \$\{item\.level\} of 5/, 'the level is rendered');
+  assert.match(body, /Join two of these to make/, 'it explains what the item becomes');
+  assert.match(pupilCss, /\.preview-art\s*\{[^}]*width:\s*62%/, 'the preview picture is large');
+  assert.match(pupilHtml, /id="btn-info"/, 'an information button exists');
+  assert.match(pupilJs, /function setInfoMode/, 'the button has a handler');
+});
+
+test('artwork stays lightweight and is bundled with the project', () => {
+  const totalBytes = Buffer.byteLength(artJs + itemsJs + paletteJs, 'utf8');
+  assert.ok(totalBytes < 70 * 1024, `art modules are ${(totalBytes / 1024).toFixed(1)}KB, expected under 70KB`);
+
+  // No external or binary assets anywhere in the client.
+  for (const [name, source] of [['art.js', artJs], ['items.js', itemsJs], ['palette.js', paletteJs]]) {
+    // The SVG namespace URL is not a network request, so it is excluded.
+    const withoutNamespace = source.replace(/https?:\/\/www\.w3\.org\/2000\/svg/g, '');
+    assert.ok(!/https?:\/\//.test(withoutNamespace), `${name} fetches something remote`);
+    assert.ok(!source.includes('base64'), `${name} embeds a raster image`);
+    assert.ok(!source.includes('url('), `${name} references an external asset`);
+  }
+  for (const html of [pupilHtml, teacherHtml]) {
+    assert.ok(!/<img\b/.test(html), 'no raster images are used');
+    assert.ok(!/@font-face|fonts\.googleapis/.test(html), 'no web fonts are downloaded');
+  }
+  // Filters and blurs are avoided so the art stays sharp and cheap on phones.
+  assert.ok(!artJs.includes('<filter'), 'no SVG filters, which are slow on phones');
+  assert.ok(!itemsJs.includes('<filter'));
+});
+
+// ===========================================================================
+// Scoreboard in the interface
+// ===========================================================================
+
+test('the dashboard has two clearly labelled scoreboard tabs', () => {
+  assert.match(teacherHtml, /data-score-tab="english"/, 'English tab');
+  assert.match(teacherHtml, /data-score-tab="game"/, 'game tab');
+  assert.match(teacherHtml, /English Stars/, 'the English tab is named');
+  assert.match(teacherHtml, /Festival Champions/, 'the game tab is named');
+  assert.match(teacherHtml, /role="tablist"/, 'the tabs are marked up as tabs');
+  assert.match(teacherJs, /function renderScoreboard/, 'the dashboard renders them');
+  assert.match(teacherJs, /aria-selected/, 'the selected tab is announced');
+});
+
+test('the scoreboard explains itself on screen rather than hiding the rules', () => {
+  assert.match(teacherHtml, /id="score-how"/, 'the dashboard has an explanation line');
+  assert.match(teacherJs, /explanations\[state\.scoreTab\]/, 'it uses the server explanation');
+  assert.match(pupilJs, /score-how/, 'the pupil sheet explains it too');
+});
+
+test('the scoreboard is large enough for a classroom TV', () => {
+  assert.match(teacherCss, /body\.present #panel-scoreboard/, 'TV view styles the scoreboard');
+  const tv = teacherCss.slice(teacherCss.indexOf('body.present #panel-scoreboard'));
+  assert.match(tv, /font-size:\s*clamp\(1\.4rem/, 'table text scales up on a TV');
+  assert.match(tv, /\.rank\s*\{[\s\S]{0,120}font-size:\s*clamp/, 'rank badges scale up too');
+  // The scoreboard panel must not be hidden in presentation mode.
+  assert.ok(
+    !/id="panel-scoreboard"[^>]*class="[^"]*no-present/.test(teacherHtml),
+    'the scoreboard stays visible in TV view'
+  );
+});
+
+test('the pupil score panel is compact and sits outside the board', () => {
+  assert.match(pupilHtml, /id="score-panel"/, 'the panel exists');
+  // It must be a sibling of the board, never inside it.
+  const boardBlock = pupilHtml.slice(pupilHtml.indexOf('<div class="board-wrap">'), pupilHtml.indexOf('</section>', pupilHtml.indexOf('<div class="board-wrap">')));
+  assert.ok(!boardBlock.includes('score-panel'), 'the panel is not inside the board');
+  assert.ok(
+    pupilHtml.indexOf('id="score-panel"') < pupilHtml.indexOf('<div class="board-wrap">'),
+    'the panel sits above the board'
+  );
+  const rule = pupilCss.match(/\.score-panel\s*\{[^}]*\}/)[0];
+  assert.match(rule, /grid-template-columns:\s*1fr 1fr/, 'two compact columns');
+  assert.match(pupilJs, /function renderScorePanel/, 'the client renders it');
+});
+
+test('questions attempted is shown beside English points, on both screens', () => {
+  const panel = pupilJs.slice(pupilJs.indexOf('function renderScorePanel'), pupilJs.indexOf('function scoreTableHtml'));
+  assert.match(panel, /english\.attempted/, 'the phone panel shows the attempt count');
+  assert.match(panel, /asked/, 'and labels it in plain words');
+  assert.match(teacherJs, /Questions asked/, 'the dashboard column is labelled');
+  assert.match(teacherJs, /row\.attempted/, 'and shows the number');
+});
+
+test('the public scoreboard toggle is clearly labelled and defaults to off', () => {
+  assert.match(teacherHtml, /id="btn-scoreboard"/, 'the toggle exists');
+  assert.match(teacherHtml, /pupils&rsquo; phones/, 'the label says where it applies');
+  assert.match(teacherHtml, /own<\/strong> score and rank/, 'it explains what is always shown');
+  assert.match(teacherJs, /publicScoreboard/, 'the client sends the right setting');
+  const { Room } = require('../server/rooms');
+  const { QuestionStore } = require('../server/questionStore');
+  const room = new Room('TESTAA', new QuestionStore());
+  assert.strictEqual(room.settings.publicScoreboard, false, 'off by default');
+});
+
+test('ranks never rely on colour alone', () => {
+  // Rank badges are coloured for the top three, but the number is always shown.
+  assert.match(commonCss, /\.rank\s*\{/, 'rank badge styled');
+  assert.match(teacherJs, /">\$\{row\.rank\}<\/span>/, 'the dashboard prints the rank number');
+  assert.match(pupilJs, /\$\{row\.rank\}<\/span>/, 'the pupil table prints it too');
+  // A shared rank is marked with an equals sign as well as a style.
+  assert.match(commonCss, /\.rank-tied::after\s*\{[^}]*content:\s*"="/, 'ties are marked with a symbol');
+  assert.match(pupilJs, /function rankText/, 'the compact panel spells the rank out');
+});
+
+test('separate English and game winners are shown at the end', () => {
+  assert.match(pupilJs, /function winnersHtml/, 'the pupil finish screen shows winners');
+  assert.match(teacherJs, /function winnersHtml/, 'the dashboard shows winners');
+  assert.match(commonCss, /\.winner-card\.english/, 'the English card is styled');
+  assert.match(commonCss, /\.winner-card\.game/, 'the game card is styled');
+  assert.match(teacherJs, /data\.room\.status === 'ended'/, 'winners appear only once finished');
+  for (const js of [pupilJs, teacherJs]) {
+    assert.match(js, /Equal scores share a place/, 'ties are explained');
+  }
 });
