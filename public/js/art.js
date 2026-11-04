@@ -1,50 +1,41 @@
 /**
- * Original artwork for Merge Mystery: The Missing Festival.
+ * Artwork for Merge Mystery: The Missing Festival.
  *
- * Everything is drawn as inline SVG built in the browser. That keeps the whole
- * art set inside one small cacheable file instead of dozens of image requests,
- * which matters on shared classroom Wi-Fi.
+ * Everything is original to this project and drawn as inline SVG in the
+ * browser. Nothing is downloaded: no images, no fonts, no third-party service,
+ * no paid assets. The whole art set is a few kilobytes of markup bundled with
+ * the app, so it loads reliably on shared classroom Wi-Fi and stays sharp at
+ * any zoom level on any phone.
  *
- * All shapes, characters and scenes here are original to this project.
+ * Item illustrations live in items.js; colours live in palette.js.
  *
- * Accessibility note: an item's meaning is never carried by colour alone. Each
+ * Accessibility: an item's meaning is never carried by colour alone. Every
  * level has a different silhouette, and the interface always prints the item's
  * name and level number next to the picture.
  */
 
-export const PALETTE = {
-  turquoise: '#17bfc4',
-  turquoiseDark: '#0e8c90',
-  coral: '#ff6f5e',
-  coralDark: '#d9442f',
-  purple: '#7b4fd3',
-  purpleDark: '#55309c',
-  yellow: '#ffc53d',
-  yellowDark: '#d99a00',
-  green: '#35bd6a',
-  greenDark: '#1f8b4a',
-  ink: '#1d2240',
-  paper: '#fffdf7',
-  sky: '#dff6f7',
-  stone: '#b9c2d0',
-  wood: '#a9703f',
-  woodDark: '#794e28',
-};
+import { PALETTE, OUTLINE, familyColour, chapterTheme, CHAPTER_THEMES } from './palette.js';
+import { itemBody, bloom, lanternBody } from './items.js';
 
-const FAMILY_COLOUR = {
-  paper: { main: PALETTE.purple, dark: PALETTE.purpleDark, accent: PALETTE.yellow },
-  flower: { main: PALETTE.coral, dark: PALETTE.coralDark, accent: PALETTE.green },
-  ribbon: { main: PALETTE.yellow, dark: PALETTE.yellowDark, accent: PALETTE.coral },
-  lantern: { main: PALETTE.turquoise, dark: PALETTE.turquoiseDark, accent: PALETTE.yellow },
-};
+export { PALETTE, familyColour, chapterTheme, CHAPTER_THEMES };
 
-export function familyColour(family) {
-  return FAMILY_COLOUR[family] || FAMILY_COLOUR.paper;
+const W = 3.2;
+function outline(extra = '') {
+  return `stroke="${OUTLINE}" stroke-width="${W}" stroke-linejoin="round" stroke-linecap="round" ${extra}`;
 }
 
+/**
+ * Wrap drawing commands in an <svg>.
+ *
+ * The width and height attributes are set as well as the viewBox. An inline SVG
+ * carrying only a viewBox collapses to zero height inside a column flexbox on
+ * iOS Safari and on several Android WebViews, which is what made board items
+ * invisible while their name and level badge still showed.
+ */
 function svg(body, { width = 100, height = 100, extraClass = '' } = {}) {
   return (
     `<svg class="art ${extraClass}" viewBox="0 0 ${width} ${height}" ` +
+    `width="${width}" height="${height}" preserveAspectRatio="xMidYMid meet" ` +
     `xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">${body}</svg>`
   );
 }
@@ -55,230 +46,35 @@ function sceneSvg(body) {
 }
 
 // ---------------------------------------------------------------------------
-// Item artwork: four families, five levels each
+// Items
 // ---------------------------------------------------------------------------
-
-function paperItem(level, c) {
-  switch (level) {
-    case 1:
-      return `
-        <polygon points="50,18 80,50 50,82 20,50" fill="${c.main}" stroke="${c.dark}" stroke-width="4"/>
-        <polygon points="50,30 68,50 50,70 32,50" fill="${PALETTE.paper}" opacity="0.65"/>`;
-    case 2:
-      return `
-        <circle cx="28" cy="50" r="17" fill="none" stroke="${c.main}" stroke-width="8"/>
-        <circle cx="50" cy="50" r="17" fill="none" stroke="${c.accent}" stroke-width="8"/>
-        <circle cx="72" cy="50" r="17" fill="none" stroke="${c.main}" stroke-width="8"/>`;
-    case 3:
-      return `
-        <path d="M8 28 Q50 44 92 28" fill="none" stroke="${PALETTE.ink}" stroke-width="4"/>
-        <polygon points="18,31 34,34 26,58" fill="${c.main}"/>
-        <polygon points="40,36 56,36 48,62" fill="${c.accent}"/>
-        <polygon points="62,34 78,30 70,57" fill="${PALETTE.turquoise}"/>`;
-    case 4:
-      return `
-        <rect x="46" y="14" width="6" height="74" rx="3" fill="${PALETTE.woodDark}"/>
-        <path d="M20 20 H80 V62 L50 76 L20 62 Z" fill="${c.main}" stroke="${c.dark}" stroke-width="4"/>
-        <rect x="20" y="32" width="60" height="9" fill="${c.accent}"/>
-        <rect x="20" y="48" width="60" height="9" fill="${PALETTE.paper}" opacity="0.8"/>`;
-    default:
-      return `
-        <path d="M14 86 V46 Q50 12 86 46 V86" fill="none" stroke="${c.main}" stroke-width="12" stroke-linecap="round"/>
-        <path d="M14 86 V46 Q50 12 86 46 V86" fill="none" stroke="${c.dark}" stroke-width="4" stroke-dasharray="6 7"/>
-        <polygon points="26,52 40,54 33,72" fill="${c.accent}"/>
-        <polygon points="46,44 60,44 53,64" fill="${PALETTE.turquoise}"/>
-        <polygon points="66,52 80,56 73,74" fill="${PALETTE.green}"/>
-        <circle cx="50" cy="22" r="8" fill="${PALETTE.yellow}" stroke="${PALETTE.yellowDark}" stroke-width="3"/>`;
-  }
-}
-
-function bloom(cx, cy, r, main, centre) {
-  let petals = '';
-  for (let i = 0; i < 5; i++) {
-    const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
-    const px = cx + Math.cos(angle) * r * 0.78;
-    const py = cy + Math.sin(angle) * r * 0.78;
-    petals += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(r * 0.52).toFixed(1)}" fill="${main}"/>`;
-  }
-  return `${petals}<circle cx="${cx}" cy="${cy}" r="${(r * 0.42).toFixed(1)}" fill="${centre}"/>`;
-}
-
-function flowerItem(level, c) {
-  switch (level) {
-    case 1:
-      return `
-        <path d="M50 62 V88" stroke="${PALETTE.greenDark}" stroke-width="5" stroke-linecap="round"/>
-        <path d="M50 76 Q34 70 30 80 Q44 86 50 78" fill="${PALETTE.green}"/>
-        ${bloom(50, 44, 26, c.main, PALETTE.yellow)}`;
-    case 2:
-      return `
-        <path d="M50 60 V88 M34 64 L44 84 M66 64 L56 84" stroke="${PALETTE.greenDark}" stroke-width="4" stroke-linecap="round"/>
-        ${bloom(30, 50, 18, c.main, PALETTE.yellow)}
-        ${bloom(70, 50, 18, c.main, PALETTE.yellow)}
-        ${bloom(50, 34, 20, PALETTE.coral, PALETTE.paper)}`;
-    case 3:
-      return `
-        <path d="M38 66 L50 90 L62 66 Z" fill="${PALETTE.paper}" stroke="${PALETTE.stone}" stroke-width="3"/>
-        <path d="M50 58 V74" stroke="${PALETTE.greenDark}" stroke-width="5"/>
-        ${bloom(26, 46, 16, c.main, PALETTE.yellow)}
-        ${bloom(74, 46, 16, c.main, PALETTE.yellow)}
-        ${bloom(40, 28, 16, PALETTE.purple, PALETTE.paper)}
-        ${bloom(62, 28, 16, PALETTE.turquoise, PALETTE.paper)}
-        ${bloom(50, 48, 18, PALETTE.coral, PALETTE.yellow)}`;
-    case 4:
-      return `
-        <path d="M22 58 H78 L70 88 H30 Z" fill="${PALETTE.wood}" stroke="${PALETTE.woodDark}" stroke-width="4"/>
-        <path d="M22 58 H78" stroke="${PALETTE.woodDark}" stroke-width="5"/>
-        <path d="M30 70 H70 M34 80 H66" stroke="${PALETTE.woodDark}" stroke-width="3" opacity="0.7"/>
-        <path d="M30 58 Q50 30 70 58" fill="none" stroke="${PALETTE.woodDark}" stroke-width="4"/>
-        ${bloom(30, 46, 15, c.main, PALETTE.yellow)}
-        ${bloom(50, 38, 17, PALETTE.purple, PALETTE.paper)}
-        ${bloom(70, 46, 15, PALETTE.turquoise, PALETTE.paper)}
-        ${bloom(40, 54, 13, PALETTE.yellow, PALETTE.coral)}
-        ${bloom(60, 54, 13, PALETTE.green, PALETTE.paper)}`;
-    default:
-      return `
-        <rect x="34" y="78" width="32" height="10" rx="4" fill="${PALETTE.woodDark}"/>
-        <rect x="44" y="56" width="12" height="26" fill="${PALETTE.wood}"/>
-        <path d="M18 56 H82 L74 70 H26 Z" fill="${PALETTE.purple}" stroke="${PALETTE.purpleDark}" stroke-width="3"/>
-        <path d="M26 36 H74 L68 50 H32 Z" fill="${PALETTE.turquoise}" stroke="${PALETTE.turquoiseDark}" stroke-width="3"/>
-        ${bloom(24, 48, 13, c.main, PALETTE.yellow)}
-        ${bloom(50, 46, 13, PALETTE.yellow, PALETTE.coral)}
-        ${bloom(76, 48, 13, PALETTE.green, PALETTE.paper)}
-        ${bloom(34, 28, 13, PALETTE.coral, PALETTE.paper)}
-        ${bloom(66, 28, 13, PALETTE.purple, PALETTE.paper)}
-        ${bloom(50, 16, 14, PALETTE.yellow, PALETTE.coralDark)}`;
-  }
-}
-
-function ribbonItem(level, c) {
-  switch (level) {
-    case 1:
-      return `
-        <path d="M22 40 Q40 22 50 40 Q60 58 78 40" fill="none" stroke="${c.main}" stroke-width="13" stroke-linecap="round"/>
-        <path d="M22 62 Q40 44 50 62 Q60 80 78 62" fill="none" stroke="${c.dark}" stroke-width="7" stroke-linecap="round" opacity="0.65"/>`;
-    case 2:
-      return `
-        <path d="M50 50 L18 28 Q10 50 18 72 Z" fill="${c.main}" stroke="${c.dark}" stroke-width="4"/>
-        <path d="M50 50 L82 28 Q90 50 82 72 Z" fill="${c.main}" stroke="${c.dark}" stroke-width="4"/>
-        <path d="M46 58 L34 88 M54 58 L66 88" stroke="${c.main}" stroke-width="7" stroke-linecap="round"/>
-        <circle cx="50" cy="50" r="11" fill="${c.accent}" stroke="${c.dark}" stroke-width="4"/>`;
-    case 3:
-      return `
-        <path d="M26 38 H74 L70 86 H30 Z" fill="${c.main}" stroke="${c.dark}" stroke-width="4"/>
-        <path d="M36 38 Q36 18 50 18 Q64 18 64 38" fill="none" stroke="${PALETTE.woodDark}" stroke-width="5"/>
-        <rect x="26" y="52" width="48" height="11" fill="${PALETTE.paper}" opacity="0.85"/>
-        <circle cx="50" cy="58" r="8" fill="${c.accent}"/>`;
-    case 4:
-      return `
-        <rect x="18" y="38" width="64" height="48" rx="5" fill="${c.main}" stroke="${c.dark}" stroke-width="4"/>
-        <rect x="14" y="30" width="72" height="14" rx="5" fill="${c.dark}"/>
-        <rect x="44" y="30" width="12" height="56" fill="${c.accent}"/>
-        <rect x="14" y="54" width="72" height="12" fill="${c.accent}" opacity="0.9"/>
-        <path d="M50 30 L34 14 Q30 28 44 30 Z" fill="${PALETTE.coral}"/>
-        <path d="M50 30 L66 14 Q70 28 56 30 Z" fill="${PALETTE.coral}"/>`;
-    default:
-      return `
-        <path d="M16 46 Q50 22 84 46 V52 H16 Z" fill="${c.dark}" stroke="${PALETTE.ink}" stroke-width="3"/>
-        <rect x="16" y="50" width="68" height="38" rx="5" fill="${PALETTE.wood}" stroke="${PALETTE.woodDark}" stroke-width="4"/>
-        <rect x="16" y="62" width="68" height="9" fill="${c.main}"/>
-        <rect x="44" y="50" width="12" height="38" fill="${c.main}"/>
-        <rect x="40" y="66" width="20" height="14" rx="3" fill="${PALETTE.yellow}" stroke="${PALETTE.yellowDark}" stroke-width="3"/>
-        <path d="M50 42 L32 26 Q28 42 44 44 Z" fill="${PALETTE.coral}"/>
-        <path d="M50 42 L68 26 Q72 42 56 44 Z" fill="${PALETTE.coral}"/>
-        <circle cx="50" cy="42" r="7" fill="${PALETTE.yellow}"/>
-        <circle cx="26" cy="22" r="4" fill="${PALETTE.yellow}"/>
-        <circle cx="74" cy="20" r="3" fill="${PALETTE.turquoise}"/>`;
-  }
-}
-
-function lanternShape(cx, cy, w, h, main, dark) {
-  return `
-    <rect x="${cx - w / 2}" y="${cy - h / 2 - 4}" width="${w}" height="5" rx="2" fill="${dark}"/>
-    <ellipse cx="${cx}" cy="${cy}" rx="${w / 2}" ry="${h / 2}" fill="${main}" stroke="${dark}" stroke-width="3"/>
-    <path d="M${cx} ${cy - h / 2} V${cy + h / 2}" stroke="${dark}" stroke-width="2" opacity="0.5"/>
-    <rect x="${cx - w / 2}" y="${cy + h / 2 - 2}" width="${w}" height="5" rx="2" fill="${dark}"/>`;
-}
-
-function lanternItem(level, c) {
-  switch (level) {
-    case 1:
-      return `
-        <rect x="40" y="44" width="20" height="40" rx="4" fill="${PALETTE.paper}" stroke="${PALETTE.stone}" stroke-width="3"/>
-        <rect x="34" y="82" width="32" height="8" rx="3" fill="${c.dark}"/>
-        <path d="M50 44 V34" stroke="${PALETTE.ink}" stroke-width="3"/>
-        <path d="M50 14 Q60 26 50 34 Q40 26 50 14 Z" fill="${PALETTE.yellow}"/>
-        <circle cx="50" cy="26" r="4" fill="${PALETTE.coral}"/>`;
-    case 2:
-      return `
-        <path d="M50 10 V22" stroke="${PALETTE.ink}" stroke-width="3"/>
-        ${lanternShape(50, 52, 36, 44, c.main, c.dark)}
-        <circle cx="50" cy="52" r="9" fill="${PALETTE.yellow}"/>`;
-    case 3:
-      return `
-        <path d="M50 6 V16" stroke="${PALETTE.ink}" stroke-width="3"/>
-        ${lanternShape(50, 50, 56, 60, c.main, c.dark)}
-        <path d="M30 36 Q50 44 70 36 M26 50 Q50 60 74 50 M30 64 Q50 72 70 64"
-              fill="none" stroke="${c.dark}" stroke-width="2" opacity="0.6"/>
-        <circle cx="50" cy="50" r="13" fill="${PALETTE.yellow}"/>
-        <path d="M44 86 Q50 94 56 86" fill="none" stroke="${c.accent}" stroke-width="4"/>`;
-    case 4:
-      return `
-        <path d="M6 24 Q50 44 94 24" fill="none" stroke="${PALETTE.ink}" stroke-width="4"/>
-        ${lanternShape(22, 46, 26, 30, c.main, c.dark)}
-        ${lanternShape(50, 56, 28, 32, PALETTE.coral, PALETTE.coralDark)}
-        ${lanternShape(78, 46, 26, 30, PALETTE.purple, PALETTE.purpleDark)}
-        <circle cx="22" cy="46" r="6" fill="${PALETTE.yellow}"/>
-        <circle cx="50" cy="56" r="7" fill="${PALETTE.yellow}"/>
-        <circle cx="78" cy="46" r="6" fill="${PALETTE.yellow}"/>`;
-    default:
-      return `
-        <path d="M10 88 V52 Q50 14 90 52 V88" fill="none" stroke="${c.main}" stroke-width="10" stroke-linecap="round"/>
-        <path d="M10 88 V52 Q50 14 90 52 V88" fill="none" stroke="${c.dark}" stroke-width="3" stroke-dasharray="5 6"/>
-        ${lanternShape(20, 62, 18, 22, PALETTE.coral, PALETTE.coralDark)}
-        ${lanternShape(35, 40, 18, 22, PALETTE.yellow, PALETTE.yellowDark)}
-        ${lanternShape(50, 30, 20, 24, c.main, c.dark)}
-        ${lanternShape(65, 40, 18, 22, PALETTE.purple, PALETTE.purpleDark)}
-        ${lanternShape(80, 62, 18, 22, PALETTE.green, PALETTE.greenDark)}
-        <circle cx="50" cy="30" r="6" fill="${PALETTE.paper}"/>`;
-  }
-}
-
-const ITEM_DRAWERS = {
-  paper: paperItem,
-  flower: flowerItem,
-  ribbon: ribbonItem,
-  lantern: lanternItem,
-};
 
 /**
  * Picture for one item.
- * @param {string} family
+ * @param {string} family paper | flower | ribbon | lantern
  * @param {number} level 1-5
  */
 export function itemArt(family, level) {
-  const colour = familyColour(family);
-  const drawer = ITEM_DRAWERS[family] || paperItem;
-  const safeLevel = Math.max(1, Math.min(5, Number(level) || 1));
-  return svg(drawer(safeLevel, colour), { extraClass: `art-item art-${family}` });
+  return svg(itemBody(family, level), { extraClass: `art-item art-${family}` });
 }
 
-/** Small badge used on supply-source buttons. */
+/** Supply-source badge: a crate that matches the family it produces. */
 export function sourceArt(family) {
   const c = familyColour(family);
   const lid = {
-    paper: `<rect x="24" y="30" width="52" height="14" rx="4" fill="${c.main}"/>`,
-    flower: `<path d="M24 38 Q50 20 76 38 Z" fill="${c.main}"/>`,
-    ribbon: `<rect x="24" y="30" width="52" height="14" rx="7" fill="${c.main}"/>`,
-    lantern: `<path d="M26 40 L50 22 L74 40 Z" fill="${c.main}"/>`,
-  }[family] || `<rect x="24" y="30" width="52" height="14" rx="4" fill="${c.main}"/>`;
+    paper: `<rect x="22" y="28" width="56" height="16" rx="5" fill="${c.main}" ${outline()}/>`,
+    flower: `<path d="M22 40 Q50 18 78 40 Z" fill="${c.main}" ${outline()}/>`,
+    ribbon: `<rect x="22" y="28" width="56" height="16" rx="8" fill="${c.main}" ${outline()}/>`,
+    lantern: `<path d="M24 42 L50 20 L76 42 Z" fill="${c.main}" ${outline()}/>`,
+  }[family] || `<rect x="22" y="28" width="56" height="16" rx="5" fill="${c.main}" ${outline()}/>`;
+
   return svg(
     `${lid}
-     <rect x="22" y="42" width="56" height="42" rx="7" fill="${PALETTE.paper}" stroke="${c.dark}" stroke-width="4"/>
-     <rect x="30" y="52" width="40" height="7" rx="3" fill="${c.main}" opacity="0.55"/>
-     <rect x="30" y="64" width="26" height="7" rx="3" fill="${c.dark}" opacity="0.4"/>
-     <circle cx="70" cy="70" r="9" fill="${PALETTE.yellow}" stroke="${PALETTE.yellowDark}" stroke-width="3"/>
-     <path d="M70 65 V75 M65 70 H75" stroke="${PALETTE.ink}" stroke-width="3" stroke-linecap="round"/>`,
+     <rect x="20" y="42" width="60" height="44" rx="7" fill="${PALETTE.paper}" ${outline()}/>
+     <rect x="20" y="42" width="60" height="44" rx="7" fill="${c.main}" opacity="0.14"/>
+     <path d="M30 54 H70 M30 64 H56" stroke="${c.dark}" stroke-width="4" stroke-linecap="round" opacity="0.6"/>
+     <circle cx="69" cy="71" r="11" fill="${PALETTE.yellow}" ${outline()}/>
+     <path d="M69 65 V77 M63 71 H75" stroke="${OUTLINE}" stroke-width="3.4" stroke-linecap="round"/>`,
     { extraClass: 'art-source' }
   );
 }
@@ -288,180 +84,341 @@ export function sourceArt(family) {
 // ---------------------------------------------------------------------------
 
 const CHARACTERS = {
-  'Mayor Ploy': { skin: '#f6c89a', hair: PALETTE.purple, cloth: PALETTE.purple, prop: 'sash' },
-  'Mr Anan': { skin: '#e0a870', hair: PALETTE.ink, cloth: PALETTE.coral, prop: 'apron' },
-  'Miss Nin': { skin: '#f8d2ac', hair: PALETTE.greenDark, cloth: PALETTE.green, prop: 'leaf' },
-  'Grandma Dao': { skin: '#e8bb8f', hair: '#e9eef5', cloth: PALETTE.turquoise, prop: 'basket' },
-  Detective: { skin: '#f2c49b', hair: '#3a2a1c', cloth: PALETTE.yellow, prop: 'glass' },
+  'Mayor Ploy': {
+    skin: '#f6c89a', hair: PALETTE.purple, hairStyle: 'bun',
+    cloth: PALETTE.purple, prop: 'sash', hat: true,
+  },
+  'Mr Anan': {
+    skin: '#dfa268', hair: '#2b2118', hairStyle: 'short',
+    cloth: PALETTE.coral, prop: 'cup', hat: false,
+  },
+  'Miss Nin': {
+    skin: '#f8d2ac', hair: PALETTE.greenDark, hairStyle: 'long',
+    cloth: PALETTE.green, prop: 'leaf', hat: false,
+  },
+  'Grandma Dao': {
+    skin: '#e8bb8f', hair: '#eef2f7', hairStyle: 'bun',
+    cloth: PALETTE.turquoise, prop: 'basket', hat: false,
+  },
+  Detective: {
+    skin: '#f2c49b', hair: '#3a2a1c', hairStyle: 'short',
+    cloth: PALETTE.yellow, prop: 'glass', hat: true,
+  },
 };
 
+function hairFor(style, colour) {
+  if (style === 'bun') {
+    return `<circle cx="50" cy="14" r="11" fill="${colour}" ${outline('stroke-width="2.6"')}/>
+            <path d="M22 44 Q26 16 50 16 Q74 16 78 44 Q64 30 50 32 Q36 30 22 44 Z" fill="${colour}" ${outline('stroke-width="2.6"')}/>`;
+  }
+  if (style === 'long') {
+    return `<path d="M20 48 Q22 14 50 14 Q78 14 80 48 L80 72 Q72 56 70 40 Q60 32 50 33 Q40 32 30 40 Q28 56 20 72 Z"
+                  fill="${colour}" ${outline('stroke-width="2.6"')}/>`;
+  }
+  return `<path d="M22 44 Q26 14 50 14 Q74 14 78 44 Q64 28 50 31 Q36 28 22 44 Z" fill="${colour}" ${outline('stroke-width="2.6"')}/>`;
+}
+
 /**
- * Friendly character portrait.
- * @param {string} name one of the town characters
- * @param {'happy'|'thinking'|'cheer'} mood
+ * Character portrait with a readable expression.
+ * @param {string} name one of the townspeople
+ * @param {'happy'|'thinking'|'cheer'|'worried'} mood
  */
 export function characterArt(name, mood = 'happy') {
   const c = CHARACTERS[name] || CHARACTERS.Detective;
-  const mouth =
-    mood === 'cheer'
-      ? `<path d="M40 60 Q50 74 60 60 Z" fill="${PALETTE.coralDark}"/>`
-      : mood === 'thinking'
-        ? `<path d="M42 64 H58" stroke="${PALETTE.ink}" stroke-width="3" stroke-linecap="round"/>`
-        : `<path d="M41 61 Q50 70 59 61" fill="none" stroke="${PALETTE.ink}" stroke-width="3.5" stroke-linecap="round"/>`;
-  const eyes =
-    mood === 'thinking'
-      ? `<circle cx="40" cy="47" r="3.5" fill="${PALETTE.ink}"/><circle cx="60" cy="47" r="3.5" fill="${PALETTE.ink}"/>
-         <path d="M34 38 Q40 34 46 38" fill="none" stroke="${PALETTE.ink}" stroke-width="3"/>`
-      : `<circle cx="40" cy="47" r="4.5" fill="${PALETTE.ink}"/><circle cx="60" cy="47" r="4.5" fill="${PALETTE.ink}"/>
-         <circle cx="41.5" cy="45.5" r="1.6" fill="${PALETTE.paper}"/><circle cx="61.5" cy="45.5" r="1.6" fill="${PALETTE.paper}"/>`;
-  const prop = {
-    sash: `<path d="M30 92 L70 78" stroke="${PALETTE.yellow}" stroke-width="7"/>`,
-    apron: `<rect x="38" y="80" width="24" height="18" rx="3" fill="${PALETTE.paper}" opacity="0.9"/>`,
-    leaf: `<path d="M72 74 Q84 66 84 78 Q74 82 72 74 Z" fill="${PALETTE.green}"/>`,
-    basket: `<path d="M66 82 H88 L84 96 H70 Z" fill="${PALETTE.wood}" stroke="${PALETTE.woodDark}" stroke-width="3"/>`,
-    glass: `<circle cx="78" cy="72" r="10" fill="none" stroke="${PALETTE.turquoiseDark}" stroke-width="4"/>
-            <path d="M85 79 L94 90" stroke="${PALETTE.woodDark}" stroke-width="5" stroke-linecap="round"/>`,
-  }[c.prop] || '';
+
+  const faces = {
+    happy: {
+      eyes: `<circle cx="39" cy="47" r="5" fill="${OUTLINE}"/><circle cx="61" cy="47" r="5" fill="${OUTLINE}"/>
+             <circle cx="40.8" cy="45.2" r="1.8" fill="${PALETTE.paper}"/><circle cx="62.8" cy="45.2" r="1.8" fill="${PALETTE.paper}"/>`,
+      brows: `<path d="M33 38 Q39 35 45 38" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>
+              <path d="M55 38 Q61 35 67 38" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>`,
+      mouth: `<path d="M40 60 Q50 70 60 60" fill="none" stroke="${OUTLINE}" stroke-width="3.4" stroke-linecap="round"/>`,
+    },
+    cheer: {
+      eyes: `<path d="M34 48 Q39 42 44 48" fill="none" stroke="${OUTLINE}" stroke-width="3.4" stroke-linecap="round"/>
+             <path d="M56 48 Q61 42 66 48" fill="none" stroke="${OUTLINE}" stroke-width="3.4" stroke-linecap="round"/>`,
+      brows: `<path d="M32 36 Q39 32 46 36" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>
+              <path d="M54 36 Q61 32 68 36" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>`,
+      mouth: `<path d="M38 58 Q50 74 62 58 Z" fill="${PALETTE.coralDark}" ${outline('stroke-width="2.6"')}/>
+              <path d="M44 66 Q50 70 56 66" fill="${PALETTE.paper}" opacity="0.5"/>`,
+    },
+    thinking: {
+      eyes: `<circle cx="39" cy="48" r="4" fill="${OUTLINE}"/><circle cx="61" cy="48" r="4" fill="${OUTLINE}"/>`,
+      brows: `<path d="M32 36 Q39 31 46 37" fill="none" stroke="${OUTLINE}" stroke-width="3" stroke-linecap="round"/>
+              <path d="M55 37 Q61 34 67 37" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>`,
+      mouth: `<path d="M43 63 H57" stroke="${OUTLINE}" stroke-width="3.2" stroke-linecap="round"/>`,
+    },
+    worried: {
+      eyes: `<circle cx="39" cy="48" r="5" fill="${OUTLINE}"/><circle cx="61" cy="48" r="5" fill="${OUTLINE}"/>
+             <circle cx="40.8" cy="46.2" r="1.8" fill="${PALETTE.paper}"/><circle cx="62.8" cy="46.2" r="1.8" fill="${PALETTE.paper}"/>`,
+      brows: `<path d="M33 34 Q39 39 45 37" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>
+              <path d="M55 37 Q61 39 67 34" fill="none" stroke="${OUTLINE}" stroke-width="2.8" stroke-linecap="round"/>`,
+      mouth: `<path d="M41 66 Q50 58 59 66" fill="none" stroke="${OUTLINE}" stroke-width="3.2" stroke-linecap="round"/>`,
+    },
+  };
+  const face = faces[mood] || faces.happy;
+
+  const props = {
+    sash: `<path d="M28 94 L72 78" stroke="${PALETTE.yellow}" stroke-width="9" ${outline('stroke-width="2.4"')}/>
+           <circle cx="70" cy="79" r="6" fill="${PALETTE.yellowDark}" ${outline('stroke-width="2.2"')}/>`,
+    cup: `<rect x="70" y="72" width="18" height="14" rx="3" fill="${PALETTE.paper}" ${outline('stroke-width="2.4"')}/>
+          <path d="M88 76 Q95 79 88 82" fill="none" stroke="${OUTLINE}" stroke-width="2.6"/>
+          <path d="M74 70 Q76 65 78 70" fill="none" stroke="${PALETTE.stone}" stroke-width="2.4"/>`,
+    leaf: `<path d="M70 76 Q84 66 86 80 Q74 86 70 76 Z" fill="${PALETTE.green}" ${outline('stroke-width="2.4"')}/>
+           <path d="M72 78 Q80 76 85 79" fill="none" stroke="${PALETTE.greenDark}" stroke-width="2"/>`,
+    basket: `<path d="M64 80 H92 L87 97 H69 Z" fill="${PALETTE.wood}" ${outline('stroke-width="2.4"')}/>
+             <path d="M68 87 H88" stroke="${PALETTE.woodDark}" stroke-width="2.6"/>
+             ${bloom(74, 78, 7, PALETTE.coral, PALETTE.yellow)}${bloom(85, 78, 6, PALETTE.purple, PALETTE.paper)}`,
+    glass: `<circle cx="78" cy="70" r="12" fill="${PALETTE.sky}" fill-opacity="0.85" ${outline('stroke-width="3.4"')}/>
+            <path d="M87 79 L96 90" stroke="${PALETTE.woodDark}" stroke-width="7" stroke-linecap="round"/>
+            <path d="M72 65 Q76 62 80 64" fill="none" stroke="${PALETTE.paper}" stroke-width="2.6"/>`,
+  };
+
+  const hat = c.hat
+    ? `<path d="M18 26 H82 L74 16 Q50 6 26 16 Z" fill="${c.cloth}" ${outline('stroke-width="2.6"')}/>
+       <rect x="14" y="24" width="72" height="7" rx="3.5" fill="${PALETTE.ink}" ${outline('stroke-width="2.2"')}/>`
+    : '';
 
   return svg(
-    `<circle cx="50" cy="50" r="46" fill="${PALETTE.sky}"/>
-     <path d="M16 100 Q24 74 50 74 Q76 74 84 100 Z" fill="${c.cloth}"/>
-     <circle cx="50" cy="48" r="26" fill="${c.skin}"/>
-     <path d="M24 42 Q28 16 50 16 Q72 16 76 42 Q64 30 50 32 Q36 30 24 42 Z" fill="${c.hair}"/>
-     ${eyes}
-     <circle cx="31" cy="55" r="5" fill="${PALETTE.coral}" opacity="0.45"/>
-     <circle cx="69" cy="55" r="5" fill="${PALETTE.coral}" opacity="0.45"/>
-     ${mouth}
-     ${prop}`,
+    `<circle cx="50" cy="50" r="47" fill="${PALETTE.sky}"/>
+     <circle cx="50" cy="50" r="47" fill="none" stroke="${OUTLINE}" stroke-width="2.4" opacity="0.25"/>
+     <path d="M14 100 Q22 72 50 72 Q78 72 86 100 Z" fill="${c.cloth}" ${outline()}/>
+     <path d="M40 72 Q50 82 60 72" fill="${PALETTE.paper}" opacity="0.5"/>
+     <circle cx="50" cy="48" r="27" fill="${c.skin}" ${outline()}/>
+     <circle cx="27" cy="52" r="5" fill="${c.skin}" ${outline('stroke-width="2.2"')}/>
+     <circle cx="73" cy="52" r="5" fill="${c.skin}" ${outline('stroke-width="2.2"')}/>
+     ${hairFor(c.hairStyle, c.hair)}
+     ${hat}
+     ${face.brows}
+     ${face.eyes}
+     <circle cx="33" cy="57" r="5.4" fill="${PALETTE.coral}" opacity="0.4"/>
+     <circle cx="67" cy="57" r="5.4" fill="${PALETTE.coral}" opacity="0.4"/>
+     <path d="M48 52 Q50 55 52 52" fill="none" stroke="${OUTLINE}" stroke-width="2.2" stroke-linecap="round" opacity="0.6"/>
+     ${face.mouth}
+     ${props[c.prop] || ''}`,
     { extraClass: 'art-character' }
   );
 }
 
 // ---------------------------------------------------------------------------
-// Location scenes, with a clear before and after
+// Shops and buildings, drawn in detail for the chapter headers
 // ---------------------------------------------------------------------------
 
-function sceneFrame(restored) {
-  const sky = restored ? '#cdf1f2' : '#e4e7ec';
-  const ground = restored ? PALETTE.green : '#b7bdc7';
-  return {
-    sky,
-    ground,
-    open: `<rect width="200" height="120" fill="${sky}"/>
-           <circle cx="168" cy="26" r="16" fill="${restored ? PALETTE.yellow : '#d6dae1'}"/>
-           <rect y="92" width="200" height="28" fill="${ground}"/>`,
+/**
+ * A detailed shop front for one chapter.
+ * @param {string} key chapter key
+ * @param {boolean} lively draw it restored and decorated
+ */
+export function shopArt(key, lively = true) {
+  const theme = chapterTheme(key);
+  const wall = lively ? PALETTE.paper : '#dcdfe5';
+  const roof = lively ? theme.main : PALETTE.dull;
+  const glass = lively ? PALETTE.sky : '#c3c8d1';
+  const trim = lively ? theme.accent : PALETTE.dullDark;
+
+  const signs = {
+    welcome: `<path d="M26 30 H74 L68 42 H32 Z" fill="${trim}" ${outline('stroke-width="2.4"')}/>
+              <path d="M38 36 H62" stroke="${OUTLINE}" stroke-width="3" stroke-linecap="round" opacity="0.5"/>`,
+    cafe: `<rect x="28" y="28" width="44" height="14" rx="4" fill="${trim}" ${outline('stroke-width="2.4"')}/>
+           <circle cx="38" cy="35" r="3.4" fill="${PALETTE.paper}"/>
+           <circle cx="50" cy="35" r="3.4" fill="${PALETTE.paper}"/>
+           <circle cx="62" cy="35" r="3.4" fill="${PALETTE.paper}"/>`,
+    garden: `<path d="M34 40 Q50 22 66 40" fill="none" stroke="${PALETTE.greenDark}" stroke-width="5"/>
+             ${lively ? bloom(40, 34, 7, PALETTE.coral, PALETTE.yellow) + bloom(60, 34, 7, PALETTE.purple, PALETTE.paper) : ''}`,
+    market: `<path d="M24 30 H76 L70 42 H30 Z" fill="${trim}" ${outline('stroke-width="2.4"')}/>
+             <path d="M34 30 V42 M46 30 V42 M58 30 V42" stroke="${PALETTE.paper}" stroke-width="5"/>`,
+    stage: `<path d="M26 34 H74 V44 H26 Z" fill="${trim}" ${outline('stroke-width="2.4"')}/>
+            <path d="M32 39 H68" stroke="${PALETTE.paper}" stroke-width="3.4" stroke-linecap="round"/>`,
   };
-}
 
-function welcomeScene(restored, decoration) {
-  const f = sceneFrame(restored);
-  const extra = restored
-    ? decoration === 'welcome-flags'
-      ? `<path d="M34 42 Q100 58 166 42" fill="none" stroke="${PALETTE.ink}" stroke-width="2"/>
-         <polygon points="48,46 60,48 54,62" fill="${PALETTE.coral}"/>
-         <polygon points="72,50 84,51 78,65" fill="${PALETTE.yellow}"/>
-         <polygon points="96,52 108,52 102,66" fill="${PALETTE.turquoise}"/>
-         <polygon points="120,50 132,49 126,64" fill="${PALETTE.purple}"/>`
-      : `<path d="M44 92 V58 Q100 26 156 58 V92" fill="none" stroke="${PALETTE.purple}" stroke-width="10"/>
-         <circle cx="100" cy="36" r="8" fill="${PALETTE.yellow}"/>`
-    : `<path d="M60 70 L72 80 M128 72 L140 82" stroke="#9aa2ae" stroke-width="3"/>`;
-  return sceneSvg(
-    `${f.open}
-     <rect x="20" y="52" width="36" height="40" fill="${restored ? PALETTE.paper : '#cfd4db'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <polygon points="18,52 38,34 58,52" fill="${restored ? PALETTE.coral : '#aab1bb'}"/>
-     <rect x="144" y="48" width="38" height="44" fill="${restored ? PALETTE.paper : '#cfd4db'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <polygon points="142,48 163,30 184,48" fill="${restored ? PALETTE.turquoise : '#aab1bb'}"/>
-     <rect x="88" y="62" width="24" height="30" fill="${restored ? PALETTE.yellow : '#c3c9d1'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     ${extra}`
+  return svg(
+    `<rect x="16" y="42" width="68" height="48" rx="4" fill="${wall}" ${outline()}/>
+     <path d="M10 44 L50 18 L90 44 Z" fill="${roof}" ${outline()}/>
+     <rect x="24" y="52" width="18" height="16" rx="2" fill="${glass}" ${outline('stroke-width="2.4"')}/>
+     <path d="M33 52 V68 M24 60 H42" stroke="${OUTLINE}" stroke-width="2"/>
+     <rect x="58" y="52" width="18" height="16" rx="2" fill="${glass}" ${outline('stroke-width="2.4"')}/>
+     <path d="M67 52 V68 M58 60 H76" stroke="${OUTLINE}" stroke-width="2"/>
+     <rect x="42" y="68" width="16" height="22" rx="2" fill="${lively ? theme.main : PALETTE.dullDark}" ${outline('stroke-width="2.4"')}/>
+     <circle cx="54" cy="79" r="2.4" fill="${PALETTE.yellow}"/>
+     ${signs[key] || signs.welcome}
+     ${lively ? `<circle cx="50" cy="14" r="5" fill="${PALETTE.yellow}" ${outline('stroke-width="2.2"')}/>` : ''}`,
+    { extraClass: 'art-shop' }
   );
 }
 
-function cafeScene(restored, decoration) {
-  const f = sceneFrame(restored);
-  const extra = restored
-    ? decoration === 'cafe-awning'
-      ? `<path d="M40 50 H160 L150 64 H50 Z" fill="${PALETTE.coral}"/>
-         <path d="M58 50 V64 M80 50 V64 M102 50 V64 M124 50 V64" stroke="${PALETTE.paper}" stroke-width="7"/>`
-      : `<rect x="52" y="70" width="30" height="10" rx="3" fill="${PALETTE.wood}"/>
-         <rect x="118" y="70" width="30" height="10" rx="3" fill="${PALETTE.wood}"/>
-         ${bloom(60, 66, 7, PALETTE.coral, PALETTE.yellow)}${bloom(74, 66, 7, PALETTE.purple, PALETTE.paper)}
-         ${bloom(126, 66, 7, PALETTE.turquoise, PALETTE.paper)}${bloom(140, 66, 7, PALETTE.yellow, PALETTE.coral)}`
-    : `<rect x="52" y="70" width="30" height="10" rx="3" fill="#aeb5bf"/>
-       <rect x="118" y="70" width="30" height="10" rx="3" fill="#aeb5bf"/>`;
+// ---------------------------------------------------------------------------
+// Location scenes, with visible improvement as missions are completed
+// ---------------------------------------------------------------------------
+
+/** Background sky and ground, dull before restoration and bright after. */
+function stage(progress) {
+  const bright = progress >= 25;
+  const sky = bright ? '#cdf1f2' : '#e3e6eb';
+  const ground = progress >= 50 ? PALETTE.green : progress >= 25 ? '#9fbf9f' : PALETTE.dull;
+  const sun = progress >= 75 ? PALETTE.yellow : '#d6dae1';
+  return `
+    <rect width="200" height="120" fill="${sky}"/>
+    <circle cx="170" cy="24" r="15" fill="${sun}"/>
+    ${progress >= 75 ? `<circle cx="170" cy="24" r="15" fill="none" stroke="${PALETTE.yellowDark}" stroke-width="2.4" opacity="0.5"/>` : ''}
+    ${bright ? `<ellipse cx="44" cy="22" rx="20" ry="9" fill="${PALETTE.paper}" opacity="0.85"/>
+                <ellipse cx="58" cy="26" rx="14" ry="7" fill="${PALETTE.paper}" opacity="0.85"/>` : ''}
+    <rect y="92" width="200" height="28" fill="${ground}"/>
+    <path d="M0 92 H200" stroke="${OUTLINE}" stroke-width="2.4" opacity="0.35"/>`;
+}
+
+function building(x, y, w, h, wallColour, roofColour, windows = 2) {
+  let panes = '';
+  const step = w / (windows + 1);
+  for (let i = 1; i <= windows; i++) {
+    const px = x + step * i - 6;
+    panes += `<rect x="${px}" y="${y + 10}" width="12" height="11" rx="2" fill="${PALETTE.sky}" ${outline('stroke-width="2"')}/>
+              <path d="M${px + 6} ${y + 10} V${y + 21} M${px} ${y + 15.5} H${px + 12}" stroke="${OUTLINE}" stroke-width="1.4"/>`;
+  }
+  return `
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="3" fill="${wallColour}" ${outline('stroke-width="2.4"')}/>
+    <path d="M${x - 4} ${y + 2} L${x + w / 2} ${y - 14} L${x + w + 4} ${y + 2} Z" fill="${roofColour}" ${outline('stroke-width="2.4"')}/>
+    ${panes}`;
+}
+
+function bunting(y, colours) {
+  let flags = '';
+  colours.forEach((colour, i) => {
+    const x = 26 + i * 24;
+    flags += `<polygon points="${x},${y + 4} ${x + 14},${y + 6} ${x + 7},${y + 22}" fill="${colour}" ${outline('stroke-width="2"')}/>`;
+  });
+  return `<path d="M18 ${y} Q100 ${y + 14} 182 ${y}" fill="none" stroke="${OUTLINE}" stroke-width="2.6"/>${flags}`;
+}
+
+/** A small flag that appears once a location is fully restored, so completion
+ *  is visible even before the pupil has chosen their decoration. */
+function completionFlag(x, y) {
+  return `
+    <path d="M${x} ${y + 22} V${y}" stroke="${OUTLINE}" stroke-width="3"/>
+    <path d="M${x} ${y} H${x + 18} L${x + 13} ${y + 6} L${x + 18} ${y + 12} H${x} Z"
+          fill="${PALETTE.coral}" ${outline('stroke-width="2.2"')}/>
+    <circle cx="${x}" cy="${y - 3}" r="3.4" fill="${PALETTE.yellow}" ${outline('stroke-width="2"')}/>`;
+}
+
+const SCENE_COLOURS = [PALETTE.coral, PALETTE.yellow, PALETTE.turquoise, PALETTE.purple, PALETTE.green];
+
+function welcomeScene(progress, decoration) {
+  const lively = progress >= 50;
+  const wall = lively ? PALETTE.paper : '#d5d9e0';
   return sceneSvg(
-    `${f.open}
-     <rect x="34" y="40" width="132" height="52" fill="${restored ? PALETTE.paper : '#cfd4db'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <rect x="52" y="52" width="30" height="18" fill="${restored ? PALETTE.sky : '#bcc3cc'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <rect x="118" y="52" width="30" height="18" fill="${restored ? PALETTE.sky : '#bcc3cc'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <rect x="90" y="58" width="20" height="34" fill="${restored ? PALETTE.turquoise : '#b4bbc4'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     ${restored ? `<rect x="34" y="34" width="132" height="8" fill="${PALETTE.purple}"/>` : ''}
-     ${extra}`
+    `${stage(progress)}
+     ${building(16, 50, 42, 42, wall, lively ? PALETTE.coral : PALETTE.dull, 2)}
+     ${building(142, 46, 44, 46, wall, lively ? PALETTE.turquoise : PALETTE.dull, 2)}
+     <rect x="84" y="58" width="32" height="34" rx="3" fill="${lively ? PALETTE.yellow : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     <path d="M100 58 V92" stroke="${OUTLINE}" stroke-width="2.2" opacity="0.5"/>
+     ${progress >= 25 ? bunting(36, SCENE_COLOURS.slice(0, 3)) : ''}
+     ${progress >= 100 && decoration === 'welcome-flags' ? bunting(52, SCENE_COLOURS) : ''}
+     ${progress >= 100 && decoration !== 'welcome-flags'
+      ? `<path d="M44 92 V56 Q100 24 156 56 V92" fill="none" stroke="${PALETTE.purple}" stroke-width="9" stroke-linecap="round"/>
+         <path d="M44 92 V56 Q100 24 156 56 V92" fill="none" stroke="${OUTLINE}" stroke-width="2.4" stroke-dasharray="5 7"/>
+         <circle cx="100" cy="34" r="8" fill="${PALETTE.yellow}" ${outline('stroke-width="2.4"')}/>` : ''}
+     ${progress >= 75 ? `${bloom(28, 86, 6, PALETTE.coral, PALETTE.yellow)}${bloom(172, 86, 6, PALETTE.purple, PALETTE.paper)}` : ''}
+     ${progress >= 100 ? completionFlag(30, 30) : ''}`
   );
 }
 
-function gardenScene(restored, decoration) {
-  const f = sceneFrame(restored);
-  const extra = restored
-    ? decoration === 'garden-arch'
-      ? `<path d="M64 92 V60 Q100 38 136 60 V92" fill="none" stroke="${PALETTE.greenDark}" stroke-width="8"/>
-         ${bloom(76, 52, 7, PALETTE.coral, PALETTE.yellow)}${bloom(100, 44, 7, PALETTE.purple, PALETTE.paper)}${bloom(124, 52, 7, PALETTE.yellow, PALETTE.coral)}`
-      : `<path d="M44 92 L50 74 H70 L76 92 Z" fill="${PALETTE.coral}"/>
-         <path d="M124 92 L130 74 H150 L156 92 Z" fill="${PALETTE.purple}"/>
-         ${bloom(60, 66, 8, PALETTE.yellow, PALETTE.coralDark)}${bloom(140, 66, 8, PALETTE.turquoise, PALETTE.paper)}`
-    : `<path d="M44 92 L50 78 H70 L76 92 Z" fill="#aeb5bf"/>
-       <path d="M124 92 L130 78 H150 L156 92 Z" fill="#aeb5bf"/>`;
+function cafeScene(progress, decoration) {
+  const lively = progress >= 50;
   return sceneSvg(
-    `${f.open}
-     <rect x="14" y="84" width="172" height="8" fill="${restored ? PALETTE.woodDark : '#9aa2ae'}"/>
-     ${restored
-      ? `<circle cx="28" cy="74" r="12" fill="${PALETTE.green}"/><circle cx="174" cy="72" r="14" fill="${PALETTE.greenDark}"/>`
-      : `<circle cx="28" cy="78" r="8" fill="#a8afb9"/><circle cx="174" cy="78" r="9" fill="#a8afb9"/>`}
-     ${extra}`
+    `${stage(progress)}
+     <rect x="30" y="38" width="140" height="54" rx="4" fill="${lively ? PALETTE.paper : '#d5d9e0'}" ${outline()}/>
+     <rect x="30" y="32" width="140" height="9" rx="3" fill="${lively ? PALETTE.purple : PALETTE.dullDark}" ${outline('stroke-width="2.2"')}/>
+     <rect x="48" y="50" width="32" height="20" rx="2" fill="${lively ? PALETTE.sky : '#c3c8d1'}" ${outline('stroke-width="2.4"')}/>
+     <path d="M64 50 V70 M48 60 H80" stroke="${OUTLINE}" stroke-width="1.8"/>
+     <rect x="120" y="50" width="32" height="20" rx="2" fill="${lively ? PALETTE.sky : '#c3c8d1'}" ${outline('stroke-width="2.4"')}/>
+     <path d="M136 50 V70 M120 60 H152" stroke="${OUTLINE}" stroke-width="1.8"/>
+     <rect x="90" y="56" width="20" height="36" rx="2" fill="${lively ? PALETTE.coral : PALETTE.dullDark}" ${outline('stroke-width="2.4"')}/>
+     <circle cx="105" cy="74" r="2.4" fill="${PALETTE.yellow}"/>
+     ${progress >= 25
+      ? `<rect x="48" y="72" width="32" height="9" rx="3" fill="${PALETTE.wood}" ${outline('stroke-width="2.2"')}/>
+         <rect x="120" y="72" width="32" height="9" rx="3" fill="${PALETTE.wood}" ${outline('stroke-width="2.2"')}/>`
+      : `<rect x="48" y="72" width="32" height="9" rx="3" fill="${PALETTE.dull}" ${outline('stroke-width="2.2"')}/>
+         <rect x="120" y="72" width="32" height="9" rx="3" fill="${PALETTE.dull}" ${outline('stroke-width="2.2"')}/>`}
+     ${progress >= 75
+      ? `${bloom(56, 69, 7, PALETTE.coral, PALETTE.yellow)}${bloom(72, 69, 7, PALETTE.purple, PALETTE.paper)}
+         ${bloom(128, 69, 7, PALETTE.turquoise, PALETTE.paper)}${bloom(144, 69, 7, PALETTE.yellow, PALETTE.coralDark)}` : ''}
+     ${progress >= 100 && decoration === 'cafe-awning'
+      ? `<path d="M34 42 H166 L156 58 H44 Z" fill="${PALETTE.coral}" ${outline('stroke-width="2.4"')}/>
+         <path d="M56 42 V58 M78 42 V58 M100 42 V58 M122 42 V58 M144 42 V58" stroke="${PALETTE.paper}" stroke-width="7"/>` : ''}
+     ${progress >= 100 && decoration === 'cafe-window' ? bunting(28, SCENE_COLOURS.slice(0, 4)) : ''}
+     ${progress >= 100 ? completionFlag(176, 20) : ''}`
   );
 }
 
-function marketScene(restored, decoration) {
-  const f = sceneFrame(restored);
-  const water = restored ? PALETTE.turquoise : '#9fb3b6';
-  const extra = restored
-    ? decoration === 'market-stalls'
-      ? `<path d="M26 54 H84 L78 64 H32 Z" fill="${PALETTE.coral}"/>
-         <path d="M116 54 H174 L168 64 H122 Z" fill="${PALETTE.purple}"/>`
-      : `<path d="M18 40 Q100 58 182 40" fill="none" stroke="${PALETTE.ink}" stroke-width="2"/>
-         ${lanternShape(46, 50, 16, 18, PALETTE.coral, PALETTE.coralDark)}
-         ${lanternShape(78, 56, 16, 18, PALETTE.yellow, PALETTE.yellowDark)}
-         ${lanternShape(122, 56, 16, 18, PALETTE.turquoise, PALETTE.turquoiseDark)}
-         ${lanternShape(154, 50, 16, 18, PALETTE.purple, PALETTE.purpleDark)}`
-    : '';
+function gardenScene(progress, decoration) {
+  const lively = progress >= 50;
   return sceneSvg(
-    `${f.open}
+    `${stage(progress)}
+     <rect x="12" y="84" width="176" height="9" rx="3" fill="${lively ? PALETTE.woodDark : PALETTE.dullDark}" ${outline('stroke-width="2.2"')}/>
+     <circle cx="26" cy="72" r="${lively ? 14 : 9}" fill="${lively ? PALETTE.green : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     <circle cx="176" cy="70" r="${lively ? 15 : 10}" fill="${lively ? PALETTE.greenDark : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     <path d="M44 92 L50 74 H70 L76 92 Z" fill="${progress >= 25 ? PALETTE.coral : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     <path d="M124 92 L130 74 H150 L156 92 Z" fill="${progress >= 25 ? PALETTE.purple : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     ${progress >= 75 ? `${bloom(60, 68, 8, PALETTE.yellow, PALETTE.coralDark)}${bloom(140, 68, 8, PALETTE.turquoise, PALETTE.paper)}` : ''}
+     ${progress >= 50 ? `<rect x="92" y="60" width="16" height="32" rx="2" fill="${PALETTE.wood}" ${outline('stroke-width="2.2"')}/>
+                         <path d="M86 60 H114 L100 48 Z" fill="${PALETTE.greenDark}" ${outline('stroke-width="2.2"')}/>` : ''}
+     ${progress >= 100 && decoration === 'garden-arch'
+      ? `<path d="M64 92 V62 Q100 38 136 62 V92" fill="none" stroke="${PALETTE.greenDark}" stroke-width="8" stroke-linecap="round"/>
+         ${bloom(76, 54, 7, PALETTE.coral, PALETTE.yellow)}${bloom(100, 46, 8, PALETTE.purple, PALETTE.paper)}${bloom(124, 54, 7, PALETTE.yellow, PALETTE.coralDark)}` : ''}
+     ${progress >= 100 && decoration === 'garden-pots'
+      ? `${bloom(30, 58, 8, PALETTE.coral, PALETTE.yellow)}${bloom(170, 56, 8, PALETTE.purple, PALETTE.paper)}
+         ${bunting(34, SCENE_COLOURS.slice(0, 3))}` : ''}
+     ${progress >= 100 ? completionFlag(100, 26) : ''}`
+  );
+}
+
+function marketScene(progress, decoration) {
+  const lively = progress >= 50;
+  const water = progress >= 25 ? PALETTE.turquoise : '#9fb3b6';
+  return sceneSvg(
+    `${stage(progress)}
      <rect y="96" width="200" height="24" fill="${water}"/>
-     <path d="M0 100 Q25 94 50 100 T100 100 T150 100 T200 100" fill="none" stroke="${PALETTE.paper}" stroke-width="2" opacity="0.6"/>
-     <rect x="26" y="62" width="58" height="30" fill="${restored ? PALETTE.paper : '#cfd4db'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <rect x="116" y="62" width="58" height="30" fill="${restored ? PALETTE.paper : '#cfd4db'}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <path d="M70 108 Q86 100 102 108 Q86 114 70 108 Z" fill="${PALETTE.turquoiseDark}"/>
-     ${extra}`
+     <path d="M0 100 Q25 94 50 100 T100 100 T150 100 T200 100" fill="none" stroke="${PALETTE.paper}" stroke-width="2.4" opacity="0.7"/>
+     <path d="M0 96 H200" stroke="${OUTLINE}" stroke-width="2.2" opacity="0.35"/>
+     <rect x="24" y="60" width="58" height="32" rx="3" fill="${lively ? PALETTE.paper : '#d5d9e0'}" ${outline('stroke-width="2.4"')}/>
+     <rect x="118" y="60" width="58" height="32" rx="3" fill="${lively ? PALETTE.paper : '#d5d9e0'}" ${outline('stroke-width="2.4"')}/>
+     ${progress >= 25
+      ? `<path d="M20 60 H86 L80 50 H26 Z" fill="${PALETTE.coral}" ${outline('stroke-width="2.4"')}/>
+         <path d="M114 60 H180 L174 50 H120 Z" fill="${PALETTE.purple}" ${outline('stroke-width="2.4"')}/>` : ''}
+     <path d="M74 106 Q100 98 126 106 Q100 114 74 106 Z" fill="${PALETTE.turquoiseDark}" ${outline('stroke-width="2.2"')}/>
+     <path d="M100 98 V88" stroke="${OUTLINE}" stroke-width="2.4"/>
+     ${progress >= 75 ? `<path d="M18 40 Q100 58 182 40" fill="none" stroke="${OUTLINE}" stroke-width="2.6"/>
+         ${lanternBody(46, 50, 16, 18, PALETTE.coral, PALETTE.coralDark)}
+         ${lanternBody(78, 56, 16, 18, PALETTE.yellow, PALETTE.yellowDark)}
+         ${lanternBody(122, 56, 16, 18, PALETTE.turquoise, PALETTE.turquoiseDark)}
+         ${lanternBody(154, 50, 16, 18, PALETTE.purple, PALETTE.purpleDark)}` : ''}
+     ${progress >= 100 && decoration === 'market-stalls' ? bunting(30, SCENE_COLOURS) : ''}
+     ${progress >= 100 && decoration === 'market-lights'
+      ? `${lanternBody(100, 36, 18, 20, PALETTE.yellow, PALETTE.yellowDark)}` : ''}
+     ${progress >= 100 ? completionFlag(22, 22) : ''}`
   );
 }
 
-function stageScene(restored, decoration) {
-  const f = sceneFrame(restored);
-  const extra = restored
-    ? decoration === 'stage-banner'
-      ? `<rect x="50" y="30" width="100" height="26" rx="4" fill="${PALETTE.purple}"/>
-         <rect x="50" y="38" width="100" height="6" fill="${PALETTE.yellow}"/>`
-      : `<path d="M44 86 V54 Q100 24 156 54 V86" fill="none" stroke="${PALETTE.turquoise}" stroke-width="9"/>
-         ${lanternShape(60, 56, 14, 16, PALETTE.coral, PALETTE.coralDark)}
-         ${lanternShape(100, 40, 16, 18, PALETTE.yellow, PALETTE.yellowDark)}
-         ${lanternShape(140, 56, 14, 16, PALETTE.purple, PALETTE.purpleDark)}`
-    : '';
+function stageScene(progress, decoration) {
+  const lively = progress >= 50;
   return sceneSvg(
-    `${f.open}
-     <rect x="30" y="74" width="140" height="18" fill="${restored ? PALETTE.wood : '#aab1bb'}" stroke="${PALETTE.woodDark}" stroke-width="2"/>
-     <rect x="34" y="56" width="18" height="20" fill="${restored ? PALETTE.coral : '#bcc3cc'}"/>
-     <rect x="148" y="56" width="18" height="20" fill="${restored ? PALETTE.coral : '#bcc3cc'}"/>
-     ${restored ? `<circle cx="100" cy="66" r="7" fill="${PALETTE.yellow}"/>` : ''}
-     ${extra}`
+    `${stage(progress)}
+     <rect x="28" y="74" width="144" height="18" rx="3" fill="${lively ? PALETTE.wood : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     <path d="M28 82 H172" stroke="${PALETTE.woodDark}" stroke-width="2.4" opacity="0.7"/>
+     <rect x="32" y="52" width="18" height="24" rx="2" fill="${progress >= 25 ? PALETTE.coral : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     <rect x="150" y="52" width="18" height="24" rx="2" fill="${progress >= 25 ? PALETTE.coral : PALETTE.dull}" ${outline('stroke-width="2.4"')}/>
+     ${progress >= 50 ? `<path d="M50 52 H150 L144 64 H56 Z" fill="${PALETTE.purple}" ${outline('stroke-width="2.4"')}/>` : ''}
+     ${progress >= 75 ? `<circle cx="100" cy="66" r="8" fill="${PALETTE.yellow}" ${outline('stroke-width="2.4"')}/>` : ''}
+     ${progress >= 100 && decoration === 'stage-banner'
+      ? `<rect x="52" y="28" width="96" height="24" rx="4" fill="${PALETTE.purple}" ${outline('stroke-width="2.4"')}/>
+         <rect x="52" y="36" width="96" height="7" fill="${PALETTE.yellow}"/>
+         <path d="M64 46 H136" stroke="${PALETTE.paper}" stroke-width="3" stroke-linecap="round" opacity="0.7"/>` : ''}
+     ${progress >= 100 && decoration !== 'stage-banner'
+      ? `<path d="M44 86 V54 Q100 24 156 54 V86" fill="none" stroke="${PALETTE.turquoise}" stroke-width="9" stroke-linecap="round"/>
+         ${lanternBody(60, 56, 15, 17, PALETTE.coral, PALETTE.coralDark)}
+         ${lanternBody(100, 40, 17, 19, PALETTE.yellow, PALETTE.yellowDark)}
+         ${lanternBody(140, 56, 15, 17, PALETTE.purple, PALETTE.purpleDark)}` : ''}
+     ${progress >= 25 ? bunting(22, SCENE_COLOURS.slice(0, 4)) : ''}
+     ${progress >= 100 ? completionFlag(176, 34) : ''}`
   );
 }
 
@@ -474,43 +431,58 @@ const SCENES = {
 };
 
 /**
- * A location picture.
+ * A location picture that reflects how much has been restored.
+ *
  * @param {string} key chapter key
- * @param {boolean} restored draw the restored "after" version
- * @param {string} decoration chosen decoration id
+ * @param {boolean|object} restoredOrOptions `true` for the finished version, or
+ *        `{ progress, decoration }` to draw a part-finished location.
+ * @param {string} [decoration] chosen decoration id
  */
-export function sceneArt(key, restored, decoration) {
+export function sceneArt(key, restoredOrOptions, decoration) {
   const drawer = SCENES[key] || welcomeScene;
-  return drawer(Boolean(restored), decoration);
+  let progress;
+  let chosen = decoration;
+
+  if (typeof restoredOrOptions === 'object' && restoredOrOptions !== null) {
+    progress = Number(restoredOrOptions.progress) || 0;
+    chosen = restoredOrOptions.decoration;
+  } else {
+    progress = restoredOrOptions ? 100 : 0;
+  }
+  return drawer(Math.max(0, Math.min(100, progress)), chosen);
 }
 
 /** Small map pin for the chapter map. */
 export function mapPinArt(state) {
-  const fill =
-    state === 'done' ? PALETTE.green : state === 'current' ? PALETTE.coral : PALETTE.stone;
+  const fill = state === 'done' ? PALETTE.green : state === 'current' ? PALETTE.coral : PALETTE.stone;
   const mark =
     state === 'done'
-      ? `<path d="M38 50 L47 60 L64 40" fill="none" stroke="${PALETTE.paper}" stroke-width="9" stroke-linecap="round"/>`
+      ? `<path d="M36 50 L47 61 L66 38" fill="none" stroke="${PALETTE.paper}" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>`
       : state === 'current'
-        ? `<circle cx="50" cy="48" r="11" fill="${PALETTE.paper}"/>`
-        : `<rect x="42" y="38" width="16" height="22" rx="4" fill="none" stroke="${PALETTE.paper}" stroke-width="6"/>
-           <path d="M44 38 V32 Q50 24 56 32 V38" fill="none" stroke="${PALETTE.paper}" stroke-width="5"/>`;
+        ? `<circle cx="50" cy="48" r="12" fill="${PALETTE.paper}"/>
+           <circle cx="50" cy="48" r="5" fill="${PALETTE.coralDark}"/>`
+        : `<rect x="41" y="40" width="18" height="21" rx="4" fill="${PALETTE.paper}"/>
+           <path d="M44 40 V33 Q50 25 56 33 V40" fill="none" stroke="${PALETTE.paper}" stroke-width="5.4"/>
+           <circle cx="50" cy="50" r="3" fill="${PALETTE.stone}"/>`;
   return svg(
-    `<path d="M50 94 Q18 60 18 42 A32 32 0 0 1 82 42 Q82 60 50 94 Z" fill="${fill}" stroke="${PALETTE.ink}" stroke-width="3"/>
+    `<path d="M50 95 Q17 60 17 42 A33 33 0 0 1 83 42 Q83 60 50 95 Z" fill="${fill}" ${outline()}/>
      ${mark}`,
     { extraClass: `art-pin art-pin-${state}` }
   );
 }
 
-/** Clue-card decoration: a magnifying glass over a note. */
+/** Clue-card decoration: a magnifying glass over a handwritten note. */
 export function clueCardArt() {
   return svg(
-    `<rect x="14" y="18" width="62" height="70" rx="6" fill="${PALETTE.paper}" stroke="${PALETTE.ink}" stroke-width="3"/>
-     <rect x="24" y="30" width="42" height="5" rx="2" fill="${PALETTE.turquoise}"/>
-     <rect x="24" y="42" width="34" height="5" rx="2" fill="${PALETTE.stone}"/>
-     <rect x="24" y="54" width="38" height="5" rx="2" fill="${PALETTE.stone}"/>
-     <circle cx="68" cy="66" r="17" fill="${PALETTE.sky}" fill-opacity="0.8" stroke="${PALETTE.turquoiseDark}" stroke-width="5"/>
-     <path d="M80 78 L92 90" stroke="${PALETTE.woodDark}" stroke-width="7" stroke-linecap="round"/>`,
+    `<rect x="12" y="16" width="62" height="72" rx="7" fill="${PALETTE.paper}" ${outline()}/>
+     <rect x="12" y="16" width="62" height="12" rx="7" fill="${PALETTE.turquoise}" ${outline('stroke-width="2.4"')}/>
+     <rect x="22" y="36" width="42" height="5" rx="2.5" fill="${PALETTE.turquoiseDark}" opacity="0.8"/>
+     <rect x="22" y="48" width="34" height="5" rx="2.5" fill="${PALETTE.stone}"/>
+     <rect x="22" y="60" width="38" height="5" rx="2.5" fill="${PALETTE.stone}"/>
+     <circle cx="68" cy="66" r="19" fill="${PALETTE.sky}" fill-opacity="0.85" ${outline('stroke-width="5"')}/>
+     <path d="M71 58 Q62 60 60 68" fill="none" stroke="${PALETTE.paper}" stroke-width="3.4" stroke-linecap="round"/>
+     <path d="M81 80 L94 93" stroke="${PALETTE.woodDark}" stroke-width="8" stroke-linecap="round"/>
+     <path d="M81 80 L94 93" stroke="${OUTLINE}" stroke-width="2.4" stroke-linecap="round" opacity="0.4"/>`,
     { extraClass: 'art-clue' }
   );
 }
@@ -518,25 +490,27 @@ export function clueCardArt() {
 /** The festival chest, shown at the ending. */
 export function chestArt() {
   return svg(
-    `<path d="M12 46 Q50 14 88 46 V54 H12 Z" fill="${PALETTE.woodDark}" stroke="${PALETTE.ink}" stroke-width="3"/>
-     <rect x="12" y="52" width="76" height="40" rx="5" fill="${PALETTE.wood}" stroke="${PALETTE.woodDark}" stroke-width="4"/>
-     <rect x="12" y="64" width="76" height="9" fill="${PALETTE.yellow}"/>
-     <rect x="44" y="52" width="12" height="40" fill="${PALETTE.yellow}"/>
-     <rect x="40" y="68" width="20" height="16" rx="3" fill="${PALETTE.yellowDark}" stroke="${PALETTE.ink}" stroke-width="2"/>
-     <circle cx="50" cy="76" r="3" fill="${PALETTE.ink}"/>
-     <circle cx="20" cy="26" r="4" fill="${PALETTE.coral}"/>
-     <circle cx="80" cy="22" r="5" fill="${PALETTE.turquoise}"/>
-     <circle cx="62" cy="16" r="3" fill="${PALETTE.purple}"/>`,
+    `<path d="M12 46 Q50 16 88 46 V56 H12 Z" fill="${PALETTE.woodDark}" ${outline()}/>
+     <rect x="12" y="54" width="76" height="40" rx="5" fill="${PALETTE.wood}" ${outline()}/>
+     <rect x="12" y="64" width="76" height="10" fill="${PALETTE.yellow}"/>
+     <rect x="44" y="54" width="12" height="40" fill="${PALETTE.yellow}"/>
+     <rect x="38" y="68" width="24" height="17" rx="4" fill="${PALETTE.yellowDark}" ${outline('stroke-width="2.4"')}/>
+     <circle cx="50" cy="76" r="3.4" fill="${OUTLINE}"/>
+     <path d="M20 24 L23 31 L30 34 L23 37 L20 44 L17 37 L10 34 L17 31 Z" fill="${PALETTE.coral}"/>
+     <path d="M80 18 L83 26 L91 29 L83 32 L80 40 L77 32 L69 29 L77 26 Z" fill="${PALETTE.turquoise}"/>
+     <circle cx="62" cy="14" r="4" fill="${PALETTE.purple}"/>
+     <circle cx="38" cy="12" r="3" fill="${PALETTE.green}"/>`,
     { extraClass: 'art-chest' }
   );
 }
 
-/** Coin icon for the resource bar. */
+/** Coin icon for the resource bar and the scoreboard. */
 export function coinArt() {
   return svg(
-    `<circle cx="50" cy="50" r="38" fill="${PALETTE.yellow}" stroke="${PALETTE.yellowDark}" stroke-width="6"/>
-     <circle cx="50" cy="50" r="24" fill="none" stroke="${PALETTE.yellowDark}" stroke-width="4"/>
-     <path d="M50 34 V66 M42 42 H58 M42 58 H58" stroke="${PALETTE.yellowDark}" stroke-width="5" stroke-linecap="round"/>`,
+    `<circle cx="50" cy="50" r="39" fill="${PALETTE.yellow}" ${outline('stroke-width="5"')}/>
+     <circle cx="50" cy="50" r="25" fill="none" stroke="${PALETTE.yellowDark}" stroke-width="4"/>
+     <path d="M50 33 V67 M41 42 H59 M41 58 H59" stroke="${PALETTE.yellowDark}" stroke-width="5.4" stroke-linecap="round"/>
+     <ellipse cx="38" cy="36" rx="7" ry="5" fill="${PALETTE.paper}" opacity="0.4"/>`,
     { extraClass: 'art-coin' }
   );
 }
@@ -544,10 +518,43 @@ export function coinArt() {
 /** Supply-tap icon for the resource bar. */
 export function chargeArt() {
   return svg(
-    `<circle cx="50" cy="50" r="38" fill="${PALETTE.turquoise}" stroke="${PALETTE.turquoiseDark}" stroke-width="6"/>
-     <path d="M54 22 L32 54 H48 L44 78 L68 44 H52 Z" fill="${PALETTE.paper}" stroke="${PALETTE.turquoiseDark}" stroke-width="3"/>`,
+    `<circle cx="50" cy="50" r="39" fill="${PALETTE.turquoise}" ${outline('stroke-width="5"')}/>
+     <path d="M55 20 L31 55 H48 L43 80 L69 43 H52 Z" fill="${PALETTE.paper}" ${outline('stroke-width="3"')}/>`,
     { extraClass: 'art-charge' }
   );
 }
 
+/** Star icon for the English Stars scoreboard. */
+export function starArt() {
+  return svg(
+    `<path d="M50 10 L62 38 L92 41 L69 61 L76 90 L50 75 L24 90 L31 61 L8 41 L38 38 Z"
+           fill="${PALETTE.yellow}" ${outline('stroke-width="4"')}/>
+     <path d="M50 26 L57 42 L74 44 L61 55 L65 72 L50 63 L35 72 L39 55 L26 44 L43 42 Z"
+           fill="${PALETTE.paper}" opacity="0.35"/>`,
+    { extraClass: 'art-star' }
+  );
+}
+
+/** Trophy icon for the Festival Champions scoreboard. */
+export function trophyArt() {
+  return svg(
+    `<path d="M30 16 H70 V40 Q70 60 50 60 Q30 60 30 40 Z" fill="${PALETTE.yellow}" ${outline()}/>
+     <path d="M30 22 Q14 22 14 34 Q14 46 32 46" fill="none" ${outline('stroke-width="5"')}/>
+     <path d="M70 22 Q86 22 86 34 Q86 46 68 46" fill="none" ${outline('stroke-width="5"')}/>
+     <rect x="44" y="60" width="12" height="16" fill="${PALETTE.yellowDark}" ${outline('stroke-width="2.4"')}/>
+     <rect x="28" y="76" width="44" height="12" rx="4" fill="${PALETTE.coral}" ${outline()}/>
+     <path d="M42 28 L50 44 L58 28" fill="none" stroke="${PALETTE.paper}" stroke-width="4" opacity="0.5"/>`,
+    { extraClass: 'art-trophy' }
+  );
+}
+
 export const CHARACTER_NAMES = Object.keys(CHARACTERS);
+
+/** Which townsperson belongs to which chapter, for the chapter header. */
+export const CHAPTER_CHARACTER = {
+  welcome: 'Mayor Ploy',
+  cafe: 'Mr Anan',
+  garden: 'Miss Nin',
+  market: 'Grandma Dao',
+  stage: 'Mayor Ploy',
+};

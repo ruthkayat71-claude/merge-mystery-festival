@@ -56,7 +56,46 @@ Timers only run during merge rounds, never while a question is on screen.
 > resources. Doing badly at English never reduces anyone's playing time, and
 > doing well at merging never makes the English easier or harder.
 
-### 3. Watch the Pupils tab
+### 3. Watch the live scoreboard
+
+Below the join panel there are two tabs that update by themselves:
+
+**English Stars** gives **10 points for every answer correct on the first try.**
+A pupil who gets it right after a retry still learns, still sees the
+explanation, and their correction is still counted and shown to you -- it just
+does not add points. That way nobody climbs the board by guessing repeatedly.
+
+Next to the points you also see **how many questions each pupil has been
+asked.** This matters: pupils move at different speeds, so 30 points from 3
+questions is not the same as 30 points out of 12. Both numbers are always shown
+together.
+
+**Festival Champions** ranks by **festival orders delivered**, using coins only
+to separate pupils with the same number of orders. English answers never affect
+this board, and the game never affects English Stars.
+
+**Equal scores always share a rank.** The list reads 1, 2, 2, 4, and a shared
+place is marked with an `=`. **Answer speed is never used to break a tie**, so a
+careful reader is never pushed down for taking their time.
+
+Each tab prints its own rule on screen, so you can read it out to the class.
+
+The scoreboard stays on screen in **TV view**, in very large text.
+
+### Should pupils see everyone's scores?
+
+That is your choice, and it is **off by default**.
+
+- Every pupil **always** sees their own points and rank, in a small panel above
+  their board. That is their own information.
+- The switch **Class scoreboard on pupils' phones** decides whether they can
+  also see the whole class list.
+
+Some classes enjoy it; in others it unsettles the pupils who are finding it
+hard. Turn it on and off whenever you like during the lesson. Your own dashboard
+and TV view always show the full boards either way.
+
+### 4. Watch the Pupils tab
 
 The table is split into two halves on purpose:
 
@@ -70,12 +109,12 @@ Also shown: whether each pupil is online, and what they are doing right now
 Press **Answers** next to a pupil to read every answer they typed, in order,
 with what the correct answer was.
 
-### 4. Pause when you need the class's attention
+### 5. Pause when you need the class's attention
 
 **Pause** freezes every pupil's board and stops every timer. **Resume** gives
 back exactly the time that was left. Nothing is lost.
 
-### 5. Before you finish: export the results
+### 6. Before you finish: export the results
 
 > Results are kept in the server's memory only. They are **lost** if the service
 > restarts, redeploys or goes to sleep. **Export before you end the lesson.**
@@ -88,10 +127,14 @@ In the **Pupils** tab:
 
 The files open correctly in Excel and Google Sheets, including Thai names.
 
-### 6. End the lesson
+### 7. End the lesson
 
 Press **End lesson** and confirm. Every pupil sees a finish screen with their own
 summary.
+
+The scoreboard then shows **two separate winners**: one for English Stars and
+one for Festival Champions, on their own cards. If two pupils tie, they are both
+winners -- that is normal, not a fault.
 
 ---
 
@@ -239,8 +282,14 @@ Pupils have a **⚙** button with:
   or who feel travel-sick. It also follows the phone's own setting automatically.
 - **Show how to play again**.
 
-And three reference screens:
+And four reference screens:
 
 - **Map** — the five places, with before-and-after pictures.
 - **Notes** — the detective notebook with every clue card collected.
 - **Items** — the full upgrade chain for every item family.
+- **Scores** — both scoreboards, with the rules explained.
+
+On the board itself there is also an **Info** button. A pupil taps Info, then
+taps any item, and gets a large picture of it, its name, its level out of five,
+and what two of them make. Useful for a pupil who is unsure what they are
+looking at.

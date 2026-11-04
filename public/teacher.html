@@ -92,6 +92,27 @@
     </div>
   </div>
 
+  <!-- Live scoreboard. Stays visible in TV view. -->
+  <div id="panel-scoreboard" class="card stack" hidden style="margin-top:1rem">
+    <div class="row">
+      <h2 style="margin:0" class="grow">Live scoreboard</h2>
+      <span class="chip" id="score-count">0 detectives</span>
+    </div>
+    <div class="score-tabs" role="tablist" aria-label="Scoreboard">
+      <button type="button" class="tab-english" role="tab" data-score-tab="english" aria-selected="true">
+        <span class="art-box" id="score-tab-star" aria-hidden="true"></span>
+        <span>English Stars</span>
+      </button>
+      <button type="button" class="tab-game" role="tab" data-score-tab="game" aria-selected="false">
+        <span class="art-box" id="score-tab-trophy" aria-hidden="true"></span>
+        <span>Festival Champions</span>
+      </button>
+    </div>
+    <p class="score-how" id="score-how"></p>
+    <div class="table-scroll"><div id="score-board"></div></div>
+    <div id="score-winners"></div>
+  </div>
+
   <div class="no-present stack" id="panel-main" hidden style="margin-top:1rem">
 
     <nav class="tabs" role="tablist" aria-label="Dashboard sections">
@@ -135,10 +156,14 @@
             <button type="button" class="btn-ghost btn-block" id="btn-save-allowance" style="margin-top:0.4rem">Save taps</button>
           </div>
           <div>
-            <label id="label-board">Public game leaderboard</label>
+            <label id="label-board">Class scoreboard on pupils&rsquo; phones</label>
             <div class="toggle-row">
-              <button type="button" class="btn-ghost" id="btn-leaderboard" aria-labelledby="label-board">Off</button>
-              <span class="small muted">Off by default. Shows game progress only, never English marks.</span>
+              <button type="button" class="btn-ghost" id="btn-scoreboard" aria-labelledby="label-board">Off</button>
+              <span class="small muted">
+                Off by default. Each pupil always sees their <strong>own</strong> score and rank.
+                This switch decides whether they can also see everyone else&rsquo;s.
+                Your dashboard and TV view always show the full boards.
+              </span>
             </div>
           </div>
         </div>

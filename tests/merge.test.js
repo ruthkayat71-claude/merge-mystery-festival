@@ -950,3 +950,51 @@ test('the request total is split so the first clue card arrives early', () => {
   const total = counts.reduce((a, b) => a + b, 0);
   assert.ok(total >= 30 && total <= 60, `${total} requests in total is outside the tuned range`);
 });
+
+test('a request label always matches the job, and equal work pays equally', () => {
+  // A "Longer" label on a one-tap item would mislead the pupil, and paying more
+  // for it than an identical "Quick" job would be unfair.
+  for (let seed = 0; seed < 120; seed++) {
+    const game = M.createGame(`label-${seed}`);
+    game.chapterIndex = seed % M.CHAPTERS.length;
+    game.missions = [];
+    M.refillMissions(game);
+    for (const mission of game.missions) {
+      const expectedKind = mission.level <= 2 ? 'quick' : 'long';
+      assert.strictEqual(
+        mission.kind,
+        expectedKind,
+        `a level-${mission.level} "${mission.name}" was labelled "${mission.kind}"`
+      );
+      const expectedCoins = (expectedKind === 'quick' ? 6 : 9) * M.buildCost(mission.level);
+      assert.strictEqual(
+        mission.coins,
+        expectedCoins,
+        `"${mission.name}" pays ${mission.coins} but the same work elsewhere pays ${expectedCoins}`
+      );
+    }
+  }
+});
+
+test('two requests for the same item always carry the same reward', () => {
+  const rewards = new Map();
+  for (let seed = 0; seed < 200; seed++) {
+    const game = M.createGame(`reward-${seed}`);
+    game.chapterIndex = seed % M.CHAPTERS.length;
+    game.missions = [];
+    M.refillMissions(game);
+    for (const mission of game.missions) {
+      const key = `${mission.family}:${mission.level}`;
+      if (rewards.has(key)) {
+        assert.strictEqual(
+          mission.coins,
+          rewards.get(key),
+          `a ${mission.name} paid ${mission.coins} once and ${rewards.get(key)} another time`
+        );
+      } else {
+        rewards.set(key, mission.coins);
+      }
+    }
+  }
+  assert.ok(rewards.size >= 8, 'enough distinct requests were sampled to be meaningful');
+});

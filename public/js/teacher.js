@@ -1,5 +1,7 @@
 /** Teacher dashboard. */
 
+import { starArt, trophyArt } from './art.js';
+
 const $ = (id) => document.getElementById(id);
 const el = (tag, className, html) => {
   const node = document.createElement(tag);
@@ -21,7 +23,11 @@ const state = {
   events: null,
   tab: 'control',
   search: '',
+  scoreTab: 'english',
 };
+
+/** Illustrations go inside a fixed-ratio box so they can never collapse. */
+const art = (svg, extraClass = '') => `<span class="art-box ${extraClass}">${svg}</span>`;
 
 function toast(message, kind = '') {
   if (!message) return;
@@ -109,6 +115,7 @@ async function createRoom() {
   $('panel-no-room').hidden = true;
   $('panel-join').hidden = false;
   $('panel-main').hidden = false;
+  $('panel-scoreboard').hidden = false;
 }
 
 function renderJoinPanel() {
@@ -173,11 +180,116 @@ function applyDashboard(data) {
   renderCounters(data);
   renderSettings(data);
   renderPupils(data);
+  renderScoreboard(data);
 
   $('btn-start').disabled = data.room.status === 'running' || data.room.status === 'ended';
   $('btn-pause').disabled = data.room.status !== 'running';
   $('btn-resume').disabled = data.room.status !== 'paused';
   $('btn-end').disabled = data.room.status === 'ended';
+}
+
+// ---------------------------------------------------------------------------
+// Live scoreboard
+// ---------------------------------------------------------------------------
+
+/**
+ * Two boards, two tabs, updating automatically from the same event stream that
+ * feeds the rest of the dashboard.
+ *
+ * English Stars and Festival Champions are computed from completely separate
+ * data. Equal scores share a rank, and answer speed is never used as a
+ * tie-break on either board.
+ */
+function renderScoreboard(data) {
+  const board = data.scoreboard;
+  const panel = $('panel-scoreboard');
+  if (!board) {
+    panel.hidden = true;
+    return;
+  }
+  panel.hidden = false;
+
+  const rows = board[state.scoreTab] || [];
+  $('score-count').textContent =
+    `${board.english.length} detective${board.english.length === 1 ? '' : 's'}`;
+  $('score-how').textContent = board.explanations[state.scoreTab];
+  $('score-how').classList.toggle('for-game', state.scoreTab === 'game');
+
+  for (const button of document.querySelectorAll('[data-score-tab]')) {
+    button.setAttribute('aria-selected', String(button.dataset.scoreTab === state.scoreTab));
+  }
+
+  if (rows.length === 0) {
+    $('score-board').innerHTML = '<p class="score-empty">No scores yet. Press Start to begin.</p>';
+  } else if (state.scoreTab === 'english') {
+    $('score-board').innerHTML =
+      '<table class="score-table"><thead><tr>' +
+      '<th>Rank</th><th>Detective</th><th class="num">Points</th>' +
+      '<th class="num">Questions asked</th><th class="num">Right 1st try</th>' +
+      '<th class="num">After retry</th></tr></thead><tbody>' +
+      rows
+        .map(
+          (row) =>
+            `<tr><td>${rankCell(row)}</td>` +
+            `<td class="score-name">${esc(row.displayName)}${row.connected ? '' : ' <span class="score-sub">(offline)</span>'}</td>` +
+            `<td class="num score-points">${row.points}</td>` +
+            `<td class="num">${row.attempted}</td>` +
+            `<td class="num">${row.firstAttemptCorrect}</td>` +
+            `<td class="num">${row.correctAfterRetry}</td></tr>`
+        )
+        .join('') +
+      '</tbody></table>';
+  } else {
+    $('score-board').innerHTML =
+      '<table class="score-table"><thead><tr>' +
+      '<th>Rank</th><th>Detective</th><th class="num">Orders</th>' +
+      '<th class="num">Coins</th><th>Chapter</th><th class="num">Clues</th></tr></thead><tbody>' +
+      rows
+        .map(
+          (row) =>
+            `<tr><td>${rankCell(row)}</td>` +
+            `<td class="score-name">${esc(row.displayName)}${row.connected ? '' : ' <span class="score-sub">(offline)</span>'}</td>` +
+            `<td class="num score-points">${row.missions}</td>` +
+            `<td class="num">${row.coins}</td>` +
+            `<td>${esc(row.chapterName)}</td>` +
+            `<td class="num">${row.cluesFound}/5</td></tr>`
+        )
+        .join('') +
+      '</tbody></table>';
+  }
+
+  // Winners are only meaningful once the lesson has finished.
+  $('score-winners').innerHTML =
+    data.room.status === 'ended' ? winnersHtml(board) : '';
+}
+
+function rankCell(row) {
+  const className = row.rank <= 3 ? `rank rank-${row.rank}` : 'rank';
+  return `<span class="${className}${row.tied ? ' rank-tied' : ''}">${row.rank}</span>`;
+}
+
+/** Separate winners for English and for the game. Ties share the place. */
+function winnersHtml(board) {
+  const list = (entries, score) =>
+    entries.length === 0
+      ? '<p class="winner-score">Nobody yet</p>'
+      : entries
+          .map(
+            (entry) =>
+              `<p class="winner-name">${esc(entry.displayName)}</p>` +
+              `<p class="winner-score">${esc(score(entry))}</p>`
+          )
+          .join('');
+  return (
+    '<h3>Today\u2019s winners</h3><div class="winner-grid">' +
+    `<div class="winner-card english">${art(starArt())}<h3>${esc(board.labels.english)}</h3>` +
+    list(board.winners.english, (e) => `${e.points} points from ${e.attempted} questions`) +
+    '</div>' +
+    `<div class="winner-card game">${art(trophyArt())}<h3>${esc(board.labels.game)}</h3>` +
+    list(board.winners.game, (e) => `${e.missions} orders, ${e.coins} coins`) +
+    '</div></div>' +
+    '<p class="small muted">Two separate prizes. Equal scores share a place.</p>'
+  );
 }
 
 function renderCounters(data) {
@@ -218,9 +330,9 @@ function renderSettings(data) {
     $('input-allowance').value = data.settings.roundAllowance;
     settingsPainted = true;
   }
-  const leaderboard = $('btn-leaderboard');
-  leaderboard.textContent = data.settings.leaderboardEnabled ? 'On' : 'Off';
-  leaderboard.className = data.settings.leaderboardEnabled ? 'btn-go' : 'btn-ghost';
+  const scoreboardToggle = $('btn-scoreboard');
+  scoreboardToggle.textContent = data.settings.publicScoreboard ? 'On' : 'Off';
+  scoreboardToggle.className = data.settings.publicScoreboard ? 'btn-go' : 'btn-ghost';
 }
 
 async function saveSettings(patch) {
@@ -551,6 +663,15 @@ function download(kind) {
 }
 
 function boot() {
+  $('score-tab-star').innerHTML = starArt();
+  $('score-tab-trophy').innerHTML = trophyArt();
+  for (const button of document.querySelectorAll('[data-score-tab]')) {
+    button.addEventListener('click', () => {
+      state.scoreTab = button.dataset.scoreTab;
+      if (state.dashboard) renderScoreboard(state.dashboard);
+    });
+  }
+
   $('login-form').addEventListener('submit', doLogin);
   $('btn-logout').addEventListener('click', async () => {
     await api('/api/teacher/logout', {});
@@ -575,8 +696,8 @@ function boot() {
     saveSettings({ lessonMinutes: Number($('input-lesson').value) }));
   $('btn-save-allowance').addEventListener('click', () =>
     saveSettings({ roundAllowance: Number($('input-allowance').value) }));
-  $('btn-leaderboard').addEventListener('click', () =>
-    saveSettings({ leaderboardEnabled: !state.dashboard.settings.leaderboardEnabled }));
+  $('btn-scoreboard').addEventListener('click', () =>
+    saveSettings({ publicScoreboard: !state.dashboard.settings.publicScoreboard }));
 
   $('btn-copy-link').addEventListener('click', async () => {
     const url = state.qr ? state.qr.url : '';

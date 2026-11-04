@@ -5,10 +5,11 @@ What was actually run, what failed and was fixed, and what still needs a human.
 Reproduce with:
 
 ```bash
-npm test             # 203 automated tests
+npm test             # 248 automated tests
 npm run test:load    # simulated simultaneous pupils
 node tools/pacing.js # lesson-length estimate
 bash tools/smoke.sh  # end-to-end against a running server
+node tools/verify-art.mjs   # confirm every item picture renders in gameplay
 ```
 
 ---
@@ -19,11 +20,12 @@ bash tools/smoke.sh  # end-to-end against a running server
 | --- | --- | --- |
 | `qr.test.js` — QR encoder and decoder | 11 | pass |
 | `questions.test.js` — question bank and marking | 21 | pass |
-| `merge.test.js` — merge engine, missions, story, pacing | 62 | pass |
-| `server.test.js` — HTTP API, auth, timers, CSV, SSE | 58 | pass |
+| `merge.test.js` — merge engine, missions, story, pacing | 64 | pass |
+| `server.test.js` — HTTP API, auth, timers, CSV, SSE, scoreboard | 60 | pass |
 | `csv-auth.test.js` — CSV safety, passwords, nicknames, rooms | 21 | pass |
-| `client.test.js` — browser code wiring, artwork, phone rules | 30 | pass |
-| **Total** | **203** | **all passing** |
+| `scoreboard.test.js` — scoring, ranking, ties, what pupils see | 20 | pass |
+| `client.test.js` — browser wiring, artwork, graphics, phone rules | 51 | pass |
+| **Total** | **248** | **all passing** |
 
 Plus a load test at 45, 50 and 80 simulated pupils, and an end-to-end smoke test
 against a real running server process.
@@ -193,9 +195,13 @@ confirmed still intact.
 
 | Pupils | Cycles | Requests | Throughput | Latency p50 / p95 / p99 | Errors | Memory |
 | --- | --- | --- | --- | --- | --- | --- |
-| 45 | 3 | 2,237 | 1,835 req/s | 16 / 32 / 225 ms | 0 | 168 MB |
-| 50 | 3 | 2,689 | 1,441 req/s | 17 / 25 / 157 ms | 0 | 180 MB |
+| 45 | 3 | 2,420 | 567 req/s | 39 / 52 / 216 ms | 0 | 190 MB |
+| 50 | 3 | 2,459 | 549 req/s | 45 / 56 / 256 ms | 0 | 196 MB |
 | 80 | 2 | 2,699 | 1,409 req/s | 22 / 118 / 368 ms | 0 | 242 MB |
+
+Throughput is lower than before the scoreboards were added because each request
+now also maintains two rankings. Latency is still well inside what a classroom
+needs, and there were no errors at any size.
 
 Each simulated pupil joined, held a live event stream open, answered questions
 including deliberate wrong answers and retries, generated items, merged them and
@@ -203,6 +209,91 @@ delivered requests. Every run passed the integrity checks: no duplicated
 pupils, no double-counted answers, every refresh restored, every event stream
 opened. The dashboard built in under 2 ms and all three CSV exports together
 took about 6 ms, while the class was still live.
+
+### Scoreboards
+
+English Stars scores exactly 10 points per first-attempt correct answer, and a
+correct answer after a retry scores **0** while still being counted and shown.
+Verified both in the scoring module and end to end over HTTP, with two pupils
+answering the same questions, one straight away and one after a retry each time:
+20 points against 0, ranks 1 and 2, with the retried pupil's two corrections
+still recorded.
+
+Ranking verified as standard competition ranking (1, 2, 2, 4), with every member
+of a shared rank flagged, and everyone on zero sharing rank 1. The English row
+shape is asserted exactly and contains **no timing field of any kind**, and the
+scoreboard module is scanned to confirm it never references `Date.now`,
+`hrtime`, `elapsed` or `duration` — so it could not rank on answer speed even by
+mistake. Ties sort by name only, which is checked to be alphabetical while the
+rank stays shared.
+
+The game board ranks by orders then coins, shares ranks on identical pairs, and
+is asserted to carry **none** of `points`, `firstAttemptCorrect`, `attempted`,
+`retries` or `correctAfterRetry`. A cross-check gives one pupil strong English
+and weak game progress and another the reverse, and confirms each tops their own
+board and sits second on the other. English-only pupils appear on the English
+board and not the game board.
+
+Privacy: with the public scoreboard off, a pupil's payload contains their own
+points, rank and attempt count and **does not contain another pupil's name**.
+Switched on, the published rows are asserted to have exactly the keys
+`attempted, displayName, isMe, points, rank, tied` and
+`coins, displayName, isMe, missions, rank, tied` — no pupil ids, no connection
+status, no retry counts, no accuracy. Default-off is asserted against a freshly
+constructed room.
+
+Ranking 60 pupils with deliberately heavy ties was checked for correct ordering,
+correct shared ranks, and identical output when run twice.
+
+Interface: both tabs exist and are labelled "English Stars" and "Festival
+Champions" with `role="tablist"` and `aria-selected`; each board prints its own
+rule on screen; questions attempted appears beside points on both the phone
+panel and the dashboard column; the phone panel is asserted to be a sibling of
+the board and positioned above it, never inside it; rank numbers are always
+printed as text and ties carry an `=` so nothing depends on colour; TV view
+scales the table, the rank badges and the explanation; and the scoreboard panel
+is confirmed **not** to be hidden in presentation mode.
+
+### Graphics
+
+All **20 item illustrations** verified unique, each with at least four drawing
+commands and a dark outline. Levels within a family were compared **with every
+`fill` and `stroke` stripped out**, and remain distinguishable by geometry
+alone, which is the real test of the "never rely on colour" rule.
+
+Every location was rendered at 0, 25, 50, 75 and 100 per cent restoration: all
+five stages differ for all five chapters, and the finished version has strictly
+more shapes than the untouched one. Each chapter's colour scheme is unique, and
+the chapter tint is asserted **never** to appear on `.board` or on any `.cell`
+rule, so a decorative background can never sit behind a tile. Filled cells are
+confirmed to keep a plain pale background.
+
+Five characters × four expressions all render distinct, well-formed SVG. Five
+distinct shop fronts. Every effect the brief asked for was confirmed present as
+a real keyframe animation and wired to a client function: merge burst, merge
+ring, sparkles, item pop-in, refusal shake, coin reward, reward sweep, confetti
+and a clue-card reveal. Each motion helper is checked to consult the
+reduced-motion setting.
+
+The item preview was checked to render a large picture, the name, the level out
+of five, and the "join two of these" explanation.
+
+Weight: the three art modules total under 70 KB of source. No `<img>`, no
+`@font-face`, no `url(`, no `base64`, no SVG `<filter>`, and no remote URL
+anywhere in the client apart from the SVG namespace declaration, which is not a
+network request.
+
+### Items actually appearing in gameplay
+
+`tools/verify-art.mjs` drives the live server over HTTP as a pupil, reads the
+board back, and renders each cell with the same art modules the browser loads.
+For every picture it checks there is an `<svg>` with a non-zero `width` and
+`height`, a `viewBox`, at least three drawing commands, and an enclosing
+`.art-box`. It also checks each tile prints the item's name and level number.
+
+**50 illustrations passed**, including all 20 items, the items the server
+actually placed on the board, every supply source, all five locations at three
+restoration levels, all five shop fronts and all five characters.
 
 ### Phone layout and touch controls
 
@@ -310,17 +401,57 @@ These were real defects found by the tests, not hypotheticals.
 11. **`HEAD` advertised the wrong content length** once compression was added.
     `HEAD` now goes through the same path as `GET`.
 
+12. **Board items were invisible on iPhones and some Android phones.** Reported
+    from real use, and reproduced by inspection. The illustrations were inline
+    SVGs carrying only a `viewBox`, sized with CSS `height: auto`, inside a
+    **column flexbox**. iOS Safari and several Android WebViews collapse that to
+    **zero height**, so the picture vanished while the item's name and level
+    badge still rendered — exactly the reported symptom. Fixed in two places:
+    every SVG now carries explicit `width`, `height` and `preserveAspectRatio`
+    attributes, and every illustration is wrapped in an `.art-box` whose height
+    comes from a padding ratio with the SVG positioned absolutely inside it.
+    That construction cannot collapse in any browser. A test now asserts no
+    illustration is ever injected without the wrapper.
+
+13. **The whole board could have had no height on older Android.** `.cell` used
+    `aspect-ratio: 1 / 1` with no fallback. Browsers without `aspect-ratio`
+    would give every cell zero height. Added an `@supports not (aspect-ratio)`
+    padding fallback and a `min-height` floor.
+
+14. **A "Longer" request could be a one-tap item.** When the preferred level
+    band was already taken, the candidate search fell back to any level, so a
+    level-1 item could be labelled "Longer" — and paid 9 coins per unit where an
+    identical "Quick" job paid 6. The label is now derived from the level that
+    was actually chosen, so the label always matches the job and identical work
+    always pays the same. Two tests check this across 320 generated requests.
+
+15. **A scoreboard tab had no style of its own.** `.tab-english` was used in the
+    markup but never defined in CSS, so the two tabs would have looked
+    identical when selected. Caught by the existing "every class used is
+    defined" test.
+
+16. **Teacher pushes rebuilt both scoreboards on every pupil tap.** Adding the
+    scoreboards made each dashboard push walk every pupil, so one pupil action
+    cost work proportional to class size. Visible as p50 latency rising from
+    16 ms to 51 ms at 45 pupils. Pushes are now coalesced into at most one every
+    400 ms, which brought p50 back to 39 ms with no perceptible dashboard lag.
+
 ---
 
 ## What was NOT tested, and needs you
 
 Please treat this section as the honest limit of what has been verified.
 
-### 1. No real browser was ever opened
+### 1. No real browser was ever opened, so there are no screenshots
 
-**No part of this was run in a browser.** The sandbox that built it has no
-browser it can reach: one browser is network-isolated from the server, and the
-local one could not launch under the sandbox's process restrictions.
+**No part of this was run in a browser, and no screenshots exist.** This was
+attempted again for the graphics work and failed again: the available remote
+browser is network-isolated from the sandbox (a proxy returns HTTP 403 for the
+local server, and its container has no route to it), and the local browser
+binary could not be launched under the sandbox's process restrictions.
+
+The invisible-item bug was therefore found by reading the CSS and markup rather
+than by seeing it, and the fix is verified structurally rather than visually.
 
 So the following are **unverified** and need your eyes:
 
@@ -330,6 +461,12 @@ So the following are **unverified** and need your eyes:
   dragging on a real iOS or Android browser.
 - Whether animations, sparkles and confetti look pleasant rather than
   distracting.
+- **Whether the invisible-item fix actually worked on your phones.** The cause
+  is well understood and the fix is the standard remedy, but only you can
+  confirm the pictures now appear. Please check on an iPhone and on an Android
+  phone if you have both.
+- Whether the new illustrations read clearly at tile size, and whether the
+  chapter colours look good on your pupils' screens.
 - Whether the dashboard is genuinely readable from the back of your classroom.
 - Whether the on-screen keyboard covers the answer box on any particular phone.
 

@@ -206,3 +206,43 @@ body.present .no-present { display: none !important; }
 body.present .join-panel { grid-template-columns: 1fr; text-align: center; }
 body.present .qr-box .art, body.present .qr-box svg { max-width: min(70vh, 560px); }
 body.present .room-code { font-size: clamp(3.5rem, 12vw, 8rem); }
+
+/* --- Live scoreboard on the dashboard and the TV --------------------------- */
+
+#panel-scoreboard .score-tabs button { min-height: 62px; font-size: 1.1rem; }
+#panel-scoreboard .score-tabs button .art-box { width: 32px; flex: 0 0 32px; padding-bottom: 32px; }
+#panel-scoreboard .score-table { font-size: 1.1rem; }
+#panel-scoreboard .score-table th { font-size: 0.85rem; }
+#panel-scoreboard .score-how { font-size: 1rem; }
+
+/* TV view: big enough to read from the back of a classroom. */
+body.present #panel-scoreboard {
+  border-width: 6px;
+  margin-top: 1.2rem;
+}
+body.present #panel-scoreboard h2 { font-size: clamp(1.8rem, 4vw, 3rem); }
+body.present #panel-scoreboard .score-tabs button {
+  min-height: 86px;
+  font-size: clamp(1.3rem, 2.6vw, 2.2rem);
+}
+body.present #panel-scoreboard .score-tabs button .art-box {
+  width: 54px;
+  flex: 0 0 54px;
+  padding-bottom: 54px;
+}
+body.present #panel-scoreboard .score-table { font-size: clamp(1.4rem, 3vw, 2.4rem); }
+body.present #panel-scoreboard .score-table th { font-size: clamp(0.9rem, 1.4vw, 1.2rem); }
+body.present #panel-scoreboard .score-table td,
+body.present #panel-scoreboard .score-table th { padding: 0.55rem 0.8rem; }
+body.present #panel-scoreboard .rank {
+  font-size: clamp(1.3rem, 2.6vw, 2.2rem);
+  border-width: 3px;
+}
+body.present #panel-scoreboard .score-how { font-size: clamp(1rem, 1.6vw, 1.4rem); }
+body.present #panel-scoreboard .winner-name { font-size: clamp(1.6rem, 3.4vw, 2.8rem); }
+
+/* Only the top rows fit on a TV, so cap the height and let it scroll. */
+#panel-scoreboard .table-scroll { max-height: 52vh; overflow-y: auto; }
+
+/* The pupil count chip should be readable on the TV too. */
+body.present #score-count { font-size: clamp(1rem, 1.8vw, 1.6rem); padding: 0.3rem 1rem; }

@@ -197,6 +197,36 @@ input:disabled, select:disabled { background: #eceaf4; }
 
 /* --- Artwork -------------------------------------------------------------- */
 
+/* An inline SVG carrying only a viewBox collapses to zero height inside a
+   flex container on iOS Safari and several Android WebViews. That made board
+   items invisible while their name and level badge still showed. Every
+   illustration is therefore placed inside an .art-box whose height comes from
+   a padding ratio, with the SVG stretched to fill it absolutely. This relies on
+   nothing newer than 2012 and cannot collapse. */
+
+.art-box {
+  position: relative;
+  display: block;
+  width: 100%;
+  /* Square by default. */
+  padding-bottom: 100%;
+  height: 0;
+  overflow: hidden;
+}
+.art-box > .art,
+.art-box > svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Scenes are drawn on a 200x120 stage, so 60%. */
+.art-box-scene { padding-bottom: 60%; }
+
+/* Bare .art outside an .art-box still behaves sensibly. */
 .art { display: block; width: 100%; height: auto; }
 
 /* --- Messages ------------------------------------------------------------- */
@@ -242,3 +272,129 @@ input:disabled, select:disabled { background: #eceaf4; }
 }
 
 [hidden] { display: none !important; }
+
+/* --- aspect-ratio fallback ------------------------------------------------ */
+
+/* Older Android browsers do not support aspect-ratio. Without this the board
+   cells would have no height and every item would be invisible. */
+@supports not (aspect-ratio: 1 / 1) {
+  .cell {
+    height: 0 !important;
+    padding-bottom: 100% !important;
+  }
+  .cell > .tile {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+}
+
+/* --- Scoreboard (shared by the dashboard, the TV view and the phone) ------ */
+
+.score-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+.score-tabs button {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: var(--surface-2);
+  font-size: 1rem;
+}
+.score-tabs button .art-box { width: 24px; flex: 0 0 24px; padding-bottom: 24px; }
+.score-tabs button[aria-selected="true"] { background: var(--purple); color: var(--paper); }
+/* Each board keeps its own colour, so the two tabs are never confused. The tab
+   also carries its name and icon, so the colour is decoration only. */
+.score-tabs button.tab-english[aria-selected="true"] { background: var(--purple); }
+.score-tabs button.tab-game[aria-selected="true"] { background: var(--turquoise-dark); }
+.score-tabs button.tab-english { border-color: var(--purple-dark); }
+.score-tabs button.tab-game { border-color: var(--turquoise-dark); }
+
+.score-how {
+  background: var(--surface-2);
+  border-left: 6px solid var(--purple);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.score-how.for-game { border-left-color: var(--turquoise-dark); }
+
+.score-table { width: 100%; border-collapse: collapse; }
+.score-table th,
+.score-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 2px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+.score-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+}
+.score-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.score-table .score-name { font-weight: 800; white-space: normal; }
+.score-table tr.is-me { background: #fff6d8; }
+.score-table tr.is-me .score-name::after {
+  content: " (you)";
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* Rank badge. The number is always printed, so the colour is decoration. */
+.rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1em;
+  padding: 0.1rem 0.35rem;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-2);
+}
+.rank-1 { background: var(--yellow); }
+.rank-2 { background: #dfe4ec; }
+.rank-3 { background: #f0d2b4; }
+.rank-tied::after {
+  content: "=";
+  margin-left: 0.15em;
+  font-size: 0.8em;
+}
+
+.score-points { font-weight: 900; font-variant-numeric: tabular-nums; }
+.score-sub { font-size: 0.8rem; color: var(--ink-soft); font-weight: 600; }
+
+.score-empty { padding: 0.8rem; font-weight: 700; color: var(--ink-soft); }
+
+/* --- Winners -------------------------------------------------------------- */
+
+.winner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+.winner-card {
+  border: 4px solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem;
+  text-align: center;
+  background: var(--surface);
+}
+.winner-card.english { background: #fff7e0; }
+.winner-card.game { background: #e4f8f9; }
+.winner-card .art-box { width: 64px; margin: 0 auto 0.4rem; padding-bottom: 64px; }
+.winner-card h3 { margin: 0 0 0.3rem; }
+.winner-name { font-size: 1.3rem; font-weight: 900; line-height: 1.2; }
+.winner-score { font-weight: 700; color: var(--ink-soft); }

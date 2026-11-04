@@ -327,27 +327,101 @@ test('a pupil cannot read another pupil\u2019s answers', async (t) => {
   assert.ok(!json.includes('Mali'), 'no other pupil appears in a pupil payload');
 });
 
-test('the optional leaderboard is off by default and shows no English marks', async (t) => {
+test('the class scoreboard is off by default, but a pupil always sees their own', async (t) => {
   const server = await startServer();
   t.after(() => server.close());
   const { jar } = await teacherLogin(server);
   const room = await createRoom(server, jar);
   await server.request(`/api/teacher/rooms/${room.code}/start`, { body: {}, jar });
-  const pupil = await joinPupil(server, room.code, 'Mali');
+  const mali = await joinPupil(server, room.code, 'Mali');
+  const nok = await joinPupil(server, room.code, 'Nok');
+  await answerCycle(server, mali.jar, server.app, { correct: true });
 
-  let state = (await server.request('/api/pupil/state', { jar: pupil.jar })).body.state;
-  assert.strictEqual(state.room.leaderboardEnabled, false);
-  assert.strictEqual(state.leaderboard, null, 'no leaderboard is sent while it is off');
+  let state = (await server.request('/api/pupil/state', { jar: nok.jar })).body.state;
+  assert.strictEqual(state.room.publicScoreboard, false, 'off by default');
+  assert.strictEqual(state.scoreboard.publicScoreboard, false);
+  assert.strictEqual(state.scoreboard.english, null, 'the full list is withheld');
+  assert.strictEqual(state.scoreboard.game, null);
+  assert.ok(state.scoreboard.me, 'but their own standing is always there');
+  assert.ok(!JSON.stringify(state.scoreboard).includes('Mali'), 'no other pupil is named');
 
+  // Switching it on publishes names and scores, and nothing private.
   await server.request(`/api/teacher/rooms/${room.code}/settings`, {
-    body: { leaderboardEnabled: true }, jar,
+    body: { publicScoreboard: true }, jar,
   });
-  state = (await server.request('/api/pupil/state', { jar: pupil.jar })).body.state;
-  assert.ok(Array.isArray(state.leaderboard));
-  for (const entry of state.leaderboard) {
-    assert.ok(!('firstAttemptCorrect' in entry), 'no English marks on the leaderboard');
-    assert.ok(!('attempted' in entry));
+  state = (await server.request('/api/pupil/state', { jar: nok.jar })).body.state;
+  assert.ok(Array.isArray(state.scoreboard.english));
+  assert.strictEqual(state.scoreboard.english.length, 2);
+  for (const row of state.scoreboard.english) {
+    assert.deepStrictEqual(
+      Object.keys(row).sort(),
+      ['attempted', 'displayName', 'isMe', 'points', 'rank', 'tied'],
+      'only names and scores are published'
+    );
   }
+  for (const row of state.scoreboard.game) {
+    assert.ok(!('points' in row), 'the game board carries no English points');
+  }
+});
+
+test('English points on the scoreboard come only from first-attempt answers', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const { jar } = await teacherLogin(server);
+  const room = await createRoom(server, jar);
+  await server.request(`/api/teacher/rooms/${room.code}/start`, { body: {}, jar });
+
+  const straight = await joinPupil(server, room.code, 'Straight');
+  const retried = await joinPupil(server, room.code, 'Retried');
+
+  await answerCycle(server, straight.jar, server.app, { correct: true });
+
+  // Retried gets each question wrong once, then right.
+  for (let slot = 0; slot < 2; slot++) {
+    const state = (await server.request('/api/pupil/state', { jar: retried.jar })).body.state;
+    if (!state.question) break;
+    const full = server.app.store.get(state.question.id);
+    const wrong = full.options ? full.options.find((o) => o !== full.answer) : 'definitely-wrong';
+    await server.request('/api/pupil/answer', {
+      body: { questionId: full.id, answer: wrong }, jar: retried.jar,
+    });
+    const answer = full.type === 'order' ? full.tokens.join(' ') : full.answer;
+    await server.request('/api/pupil/answer', {
+      body: { questionId: full.id, answer }, jar: retried.jar,
+    });
+  }
+
+  const dashboard = await server.request(`/api/teacher/rooms/${room.code}/dashboard`, { jar });
+  const board = dashboard.body.scoreboard;
+  const straightRow = board.english.find((r) => r.displayName === 'Straight');
+  const retriedRow = board.english.find((r) => r.displayName === 'Retried');
+
+  assert.strictEqual(straightRow.points, 20, 'two first-attempt answers at 10 points each');
+  assert.strictEqual(retriedRow.points, 0, 'correct after a retry earns no points');
+  assert.strictEqual(retriedRow.correctAfterRetry, 2, 'but the learning is still recorded');
+  assert.strictEqual(retriedRow.attempted, 2, 'and the attempt count is shown');
+  assert.strictEqual(straightRow.rank, 1);
+  assert.strictEqual(retriedRow.rank, 2);
+});
+
+test('the dashboard carries both boards with their explanations', async (t) => {
+  const server = await startServer();
+  t.after(() => server.close());
+  const { jar } = await teacherLogin(server);
+  const room = await createRoom(server, jar);
+  await server.request(`/api/teacher/rooms/${room.code}/start`, { body: {}, jar });
+  await joinPupil(server, room.code, 'Mali');
+
+  const dashboard = await server.request(`/api/teacher/rooms/${room.code}/dashboard`, { jar });
+  const board = dashboard.body.scoreboard;
+  assert.ok(board, 'the dashboard includes the scoreboard');
+  assert.strictEqual(board.labels.english, 'English Stars');
+  assert.strictEqual(board.labels.game, 'Festival Champions');
+  assert.strictEqual(board.pointsPerFirstAttempt, 10);
+  assert.ok(board.explanations.english.length > 40);
+  assert.ok(board.explanations.game.length > 40);
+  assert.ok(Array.isArray(board.winners.english));
+  assert.ok(Array.isArray(board.winners.game));
 });
 
 // ---------------------------------------------------------------------------
