@@ -1,0 +1,19 @@
+{
+  "name": "merge-mystery-festival",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Merge Mystery: The Missing Festival - an English classroom merge game for Primary 4-6 EFL pupils.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test tests/*.test.js",
+    "test:load": "node tests/load.js",
+    "hash-password": "node tools/hash-password.js"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

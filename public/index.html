@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#171a33">
+<meta name="description" content="Merge Mystery: The Missing Festival - an English classroom game.">
+<title>Merge Mystery: The Missing Festival</title>
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/pupil.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2317bfc4'/%3E%3Ccircle cx='44' cy='44' r='22' fill='none' stroke='%23171a33' stroke-width='9'/%3E%3Cpath d='M60 60 L82 82' stroke='%23171a33' stroke-width='11' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body class="pupil">
+
+<div class="app">
+
+  <!-- Live region for screen readers and for pupils who miss an animation. -->
+  <p id="live" class="visually-hidden" role="status" aria-live="polite"></p>
+
+  <!-- ===== Top bar (hidden until joined) ===== -->
+  <header class="topbar" id="topbar" hidden>
+    <div class="grow">
+      <div class="who" id="bar-name">-</div>
+      <div class="chapter-name" id="bar-chapter">-</div>
+    </div>
+    <button type="button" id="btn-map" aria-label="Town map">Map</button>
+    <button type="button" id="btn-notebook" aria-label="Detective notebook">Notes</button>
+    <button type="button" id="btn-guide" aria-label="Item guide">Items</button>
+    <button type="button" id="btn-settings" aria-label="Settings">&#9881;</button>
+  </header>
+
+  <!-- ===== Join screen ===== -->
+  <section id="screen-join" class="stack">
+    <div class="card center stack">
+      <div style="max-width:150px;margin:0 auto" id="join-art"></div>
+      <h1>Merge Mystery</h1>
+      <p style="font-size:1.15rem;font-weight:700;margin:0">The Missing Festival</p>
+      <p class="muted">The festival supplies went to the wrong places. Be a detective and help the town!</p>
+    </div>
+
+    <form class="card stack" id="join-form">
+      <div>
+        <label for="input-room">Room code</label>
+        <input type="text" id="input-room" name="room" inputmode="latin" autocapitalize="characters"
+               autocomplete="off" spellcheck="false" maxlength="8" placeholder="ABC123"
+               aria-describedby="room-help">
+        <p class="small muted" id="room-help">Your teacher shows this on the big screen.</p>
+      </div>
+      <div>
+        <label for="input-nick">Your nickname</label>
+        <input type="text" id="input-nick" name="nickname" autocomplete="off" maxlength="16"
+               placeholder="Mali" aria-describedby="nick-help">
+        <p class="small muted" id="nick-help">No real full names. Letters and numbers only.</p>
+      </div>
+      <p class="notice notice-bad" id="join-error" hidden></p>
+      <button type="submit" class="btn-go btn-big btn-block" id="btn-join">Join the game</button>
+    </form>
+  </section>
+
+  <!-- ===== Tutorial (max 3 screens) ===== -->
+  <section id="screen-tutorial" class="stack" hidden>
+    <div class="card stack">
+      <h2 id="tut-title">How to play</h2>
+      <div class="tutorial-art" id="tut-art"></div>
+      <p id="tut-text" style="font-size:1.1rem;font-weight:700"></p>
+      <div class="tutorial-dots" id="tut-dots" aria-hidden="true"></div>
+      <div class="row">
+        <button type="button" id="btn-tut-back" class="btn-ghost grow">Back</button>
+        <button type="button" id="btn-tut-next" class="btn-go grow">Next</button>
+      </div>
+      <button type="button" id="btn-tut-skip" class="btn-ghost btn-block small">Skip</button>
+    </div>
+  </section>
+
+  <!-- ===== Waiting room ===== -->
+  <section id="screen-wait" class="stack" hidden>
+    <div class="card center stack">
+      <div style="max-width:120px;margin:0 auto" id="wait-art"></div>
+      <h2>You are in!</h2>
+      <p id="wait-text" style="font-size:1.1rem;font-weight:700">Waiting for your teacher to start.</p>
+      <p class="muted small">Keep this page open. If it closes, open the link again and you will come back here.</p>
+    </div>
+  </section>
+
+  <!-- ===== English question ===== -->
+  <section id="screen-learning" class="stack" hidden>
+    <div class="card stack question-card">
+      <div class="row">
+        <span class="question-topic" id="q-topic">English</span>
+        <span class="grow"></span>
+        <span class="chip" id="q-counter">Question 1 of 2</span>
+      </div>
+      <div class="passage" id="q-passage" hidden></div>
+      <p class="prompt" id="q-prompt"></p>
+
+      <div id="q-options" class="options" hidden></div>
+
+      <div id="q-order" hidden>
+        <p class="small muted">Tap the words in the right order. Tap a word again to take it back.</p>
+        <div class="order-answer" id="order-answer" aria-label="Your sentence"></div>
+        <div class="order-pool" id="order-pool"></div>
+      </div>
+
+      <div id="q-typed" hidden>
+        <label for="input-answer" id="typed-label">Your answer</label>
+        <input type="text" id="input-answer" class="answer-input" autocomplete="off"
+               autocapitalize="sentences" maxlength="120" enterkeyhint="send">
+      </div>
+
+      <p class="notice" id="q-feedback" hidden></p>
+
+      <button type="button" class="btn-go btn-big btn-block" id="btn-answer">Check my answer</button>
+      <p class="small muted center" id="q-progress"></p>
+    </div>
+  </section>
+
+  <!-- ===== Feedback / review ===== -->
+  <section id="screen-feedback" class="stack" hidden>
+    <div class="card stack">
+      <h2>Your answers</h2>
+      <div id="feedback-list"></div>
+      <p class="notice notice-info">Everybody gets a merge round next, even if an answer was wrong.</p>
+      <button type="button" class="btn-primary btn-big btn-block" id="btn-start-round">Start merge round</button>
+    </div>
+  </section>
+
+  <!-- ===== Play screen ===== -->
+  <section id="screen-play" hidden>
+    <div class="play-grid">
+      <div>
+        <div class="timer-row">
+          <span class="small" style="font-weight:800">Time</span>
+          <div class="bar bar-timer"><span id="timer-fill" style="width:100%"></span></div>
+          <span class="timer-value" id="timer-value">60s</span>
+        </div>
+
+        <div class="resources">
+          <div class="resource">
+            <span id="icon-charge"></span>
+            <div>
+              <div class="value"><span id="val-charges">0</span><span class="small">/<span id="val-charge-cap">24</span></span></div>
+              <div class="label">Supply taps</div>
+            </div>
+          </div>
+          <div class="resource">
+            <span id="icon-coin"></span>
+            <div>
+              <div class="value" id="val-coins">0</div>
+              <div class="label">Coins</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="board" role="group" aria-label="Merge board, 5 columns by 6 rows"></div>
+
+          <div class="tray">
+            <span class="tray-label">Tray</span>
+            <div class="tray-slots" id="tray" role="group" aria-label="Storage tray"></div>
+          </div>
+
+          <div class="sources" id="sources" role="group" aria-label="Supply sources"></div>
+        </div>
+
+        <div class="row" style="margin-top:0.6rem">
+          <button type="button" class="btn-warn grow" id="btn-hint">Hint</button>
+          <button type="button" class="btn-ghost grow" id="btn-recycle">Recycle</button>
+          <button type="button" class="btn-stop grow" id="btn-rescue" hidden>Helping hand</button>
+        </div>
+        <p class="notice notice-info small" id="play-hint" hidden></p>
+      </div>
+
+      <div style="margin-top:0.7rem">
+        <div class="card stack">
+          <div class="row">
+            <h3 style="margin:0">Town requests</h3>
+            <span class="grow"></span>
+            <span class="chip" id="chapter-chip">Chapter 1</span>
+          </div>
+          <p class="small muted" style="margin:0">Choose which one to do first.</p>
+          <div id="missions"></div>
+          <div>
+            <div class="row-tight small" style="font-weight:800;justify-content:space-between">
+              <span id="improve-label">Welcome Square</span>
+              <span id="improve-value">0%</span>
+            </div>
+            <div class="bar"><span id="improve-fill" style="width:0%"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Paused ===== -->
+  <section id="screen-paused" class="stack" hidden>
+    <div class="card center stack">
+      <h2>Game paused</h2>
+      <p style="font-size:1.1rem;font-weight:700">Your teacher paused the game. Your board and time are safe.</p>
+      <p class="muted" id="paused-detail"></p>
+    </div>
+  </section>
+
+  <!-- ===== Ended ===== -->
+  <section id="screen-ended" class="stack" hidden>
+    <div class="card center stack">
+      <div style="max-width:130px;margin:0 auto" id="ended-art"></div>
+      <h2>Lesson finished</h2>
+      <p style="font-size:1.1rem;font-weight:700">Well done, detective!</p>
+      <div id="ended-summary" class="stack"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast-host" id="toasts" aria-hidden="true"></div>
+<div class="confetti-host" id="confetti" aria-hidden="true"></div>
+<div id="overlay-host"></div>
+
+<script type="module" src="/js/pupil.js"></script>
+<noscript>
+  <p style="padding:1rem;font-weight:700">This game needs JavaScript. Please ask your teacher for help.</p>
+</noscript>
+</body>
+</html>

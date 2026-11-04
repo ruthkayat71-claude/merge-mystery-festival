@@ -1,0 +1,477 @@
+/* Pupil app - portrait phone layout. */
+
+body.pupil {
+  background:
+    radial-gradient(circle at 12% 6%, #d9f4ff 0 22%, transparent 22%),
+    radial-gradient(circle at 88% 14%, #ffe8d6 0 18%, transparent 18%),
+    linear-gradient(170deg, #e7f8f8 0%, #f3edff 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0.6rem 0.6rem 1.4rem;
+}
+
+/* --- Top bar -------------------------------------------------------------- */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  margin: 0 -0.6rem 0.6rem;
+  background: var(--ink);
+  color: var(--paper);
+  border-bottom: 3px solid var(--purple);
+}
+.topbar .who { font-weight: 800; font-size: 0.95rem; }
+.topbar .chapter-name { font-size: 0.8rem; opacity: 0.85; }
+.topbar button {
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  border-width: 2px;
+}
+
+/* --- Resource bar --------------------------------------------------------- */
+
+.resources {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.resource {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+}
+.resource .art { width: 30px; flex: 0 0 30px; }
+.resource .value { font-size: 1.25rem; font-weight: 900; line-height: 1; }
+.resource .label { font-size: 0.72rem; font-weight: 700; color: var(--ink-soft); }
+
+/* --- Round timer ---------------------------------------------------------- */
+
+.timer-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.timer-row .bar { flex: 1 1 auto; }
+.timer-value { font-weight: 900; font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; }
+
+/* --- Merge board ---------------------------------------------------------- */
+
+.board-wrap {
+  background: var(--surface);
+  border: 4px solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem;
+  box-shadow: var(--shadow);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.35rem;
+  /* The board swallows touch gestures so dragging a tile never scrolls the
+     page. Everything outside .board keeps normal scrolling. */
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border: 3px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  box-shadow: none;
+  overflow: hidden;
+}
+.cell.empty::after {
+  content: "";
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: var(--line);
+  opacity: 0.5;
+}
+.cell.locked {
+  background: repeating-linear-gradient(45deg, #e2dff0 0 8px, #d2cee6 8px 16px);
+  border-style: dashed;
+}
+.cell.locked::after {
+  content: "\1F512";
+  font-size: 1.1rem;
+  opacity: 0.8;
+}
+.cell.filled { background: var(--paper); border-color: var(--ink); }
+
+.cell.selected {
+  border-color: var(--purple);
+  border-width: 5px;
+  background: #efe6ff;
+  box-shadow: 0 0 0 3px var(--yellow);
+}
+/* Selection is also marked with a corner tick, not colour alone. */
+.cell.selected::before {
+  content: "\2713";
+  position: absolute;
+  top: 1px; left: 3px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: var(--purple-dark);
+  z-index: 3;
+}
+.cell.hinted { box-shadow: 0 0 0 4px var(--yellow); border-color: var(--yellow-dark); }
+.cell.drop-target { border-color: var(--green-dark); border-width: 5px; background: #ddf9e8; }
+.cell.drag-source { opacity: 0.45; }
+
+.tile {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+  pointer-events: none;
+}
+.tile .art { width: 76%; }
+.tile .tile-name {
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1.05;
+  text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile .tile-level {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  font-size: 0.6rem;
+  font-weight: 900;
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: 6px;
+  padding: 0 3px;
+  line-height: 1.3;
+}
+
+/* --- Animations ----------------------------------------------------------- */
+
+@keyframes pop-in {
+  0% { transform: scale(0.2); opacity: 0; }
+  70% { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.cell.anim-spawn .tile { animation: pop-in calc(260ms * var(--speed)) ease-out; }
+
+@keyframes merge-burst {
+  0% { transform: scale(0.6) rotate(-8deg); }
+  55% { transform: scale(1.3) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+.cell.anim-merge .tile { animation: merge-burst calc(420ms * var(--speed)) ease-out; }
+.cell.anim-merge { box-shadow: 0 0 0 5px var(--yellow); }
+
+@keyframes shake-no {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+.cell.anim-no { animation: shake-no calc(300ms * var(--speed)) ease-in-out; }
+
+@keyframes sparkle-fly {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.1); opacity: 0; }
+}
+.sparkle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 4;
+  animation: sparkle-fly calc(620ms * var(--speed)) ease-out forwards;
+}
+
+/* --- Supply sources ------------------------------------------------------- */
+
+.sources {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+.source-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.4rem 0.3rem;
+  background: var(--surface);
+  border-radius: 14px;
+}
+.source-btn .art { width: 38px; }
+.source-btn .source-name { font-size: 0.68rem; font-weight: 800; text-align: center; line-height: 1.1; }
+.source-btn .source-makes { font-size: 0.6rem; color: var(--ink-soft); text-align: center; }
+.source-btn.suggested { box-shadow: 0 0 0 4px var(--yellow), var(--shadow); }
+
+/* --- Tray ----------------------------------------------------------------- */
+
+.tray {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  align-items: center;
+}
+.tray-label { font-size: 0.7rem; font-weight: 800; writing-mode: vertical-rl; transform: rotate(180deg); }
+.tray-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; flex: 1 1 auto; }
+.tray .cell { border-radius: 12px; }
+
+/* --- Missions ------------------------------------------------------------- */
+
+.mission {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.55rem;
+  background: var(--surface);
+}
+.mission + .mission { margin-top: 0.45rem; }
+.mission .art { width: 42px; flex: 0 0 42px; }
+.mission-info { flex: 1 1 auto; min-width: 0; }
+.mission-name { font-weight: 800; font-size: 0.95rem; }
+.mission-meta { font-size: 0.75rem; color: var(--ink-soft); }
+.mission-kind {
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+.mission-kind.quick { background: #d8f7e4; }
+.mission-kind.long { background: #fff0cc; }
+.mission-kind.bonus { background: #efe6ff; }
+.mission.ready { box-shadow: 0 0 0 4px var(--green); }
+.mission button { min-height: 44px; font-size: 0.85rem; padding: 0.4rem 0.7rem; }
+
+/* --- English question screen --------------------------------------------- */
+
+.question-card { background: var(--surface); }
+.question-topic {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: var(--purple);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.passage {
+  background: var(--surface-2);
+  border-left: 6px solid var(--turquoise);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.8rem;
+  white-space: pre-line;
+  font-size: 1.05rem;
+}
+.prompt { font-size: 1.2rem; font-weight: 800; margin-bottom: 0.8rem; }
+
+.options { display: grid; gap: 0.5rem; }
+.option-btn {
+  text-align: left;
+  background: var(--surface);
+  font-size: 1.05rem;
+  min-height: 56px;
+  white-space: normal;
+}
+.option-btn.chosen { background: #efe6ff; border-color: var(--purple); }
+
+/* Sentence ordering with large tap controls. */
+.order-answer {
+  min-height: 60px;
+  border: 3px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-content: flex-start;
+  margin-bottom: 0.6rem;
+}
+.order-pool { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.token-btn {
+  font-size: 1.05rem;
+  min-height: 52px;
+  padding: 0.5rem 0.8rem;
+  background: var(--yellow);
+  color: #4a3200;
+}
+.order-answer .token-btn { background: var(--turquoise); color: #06343a; }
+
+.answer-input { font-size: 1.2rem; }
+
+.feedback-item {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.7rem;
+  background: var(--surface);
+}
+.feedback-item + .feedback-item { margin-top: 0.6rem; }
+.feedback-item .verdict { font-weight: 900; }
+.feedback-item.ok { background: #e9fbf1; }
+.feedback-item.no { background: #fff2ee; }
+
+/* --- Chapter map ---------------------------------------------------------- */
+
+.map-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.3rem; }
+.map-stop { text-align: center; }
+.map-stop .art { width: 100%; max-width: 46px; margin: 0 auto; }
+.map-stop .map-name { font-size: 0.6rem; font-weight: 800; line-height: 1.1; }
+.map-stop .map-state { font-size: 0.56rem; color: var(--ink-soft); }
+
+.scene-frame {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--sky);
+}
+.before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.before-after figure { margin: 0; }
+.before-after figcaption { font-size: 0.75rem; font-weight: 800; text-align: center; padding-top: 0.25rem; }
+
+/* --- Notebook and clue cards --------------------------------------------- */
+
+.clue-card {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  padding: 0.7rem;
+  display: flex;
+  gap: 0.6rem;
+}
+.clue-card + .clue-card { margin-top: 0.6rem; }
+.clue-card .art { width: 52px; flex: 0 0 52px; }
+.clue-sentences { font-size: 1.05rem; font-weight: 700; }
+.clue-card.solved { background: #eafaf0; }
+
+/* --- Item guide ----------------------------------------------------------- */
+
+.guide-family { border-top: 3px solid var(--line); padding-top: 0.6rem; margin-top: 0.6rem; }
+.guide-chain {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  overflow-x: auto;
+  padding-bottom: 0.3rem;
+}
+.guide-step { text-align: center; flex: 0 0 64px; }
+.guide-step .art { width: 44px; margin: 0 auto; }
+.guide-step .guide-name { font-size: 0.56rem; font-weight: 800; line-height: 1.1; }
+.guide-arrow { font-weight: 900; color: var(--ink-soft); flex: 0 0 auto; }
+
+/* --- Toast --------------------------------------------------------------- */
+
+.toast-host {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: calc(100% - 1.6rem);
+  max-width: 440px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+.toast {
+  background: var(--ink);
+  color: var(--paper);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-lift);
+  animation: toast-in calc(200ms * var(--speed)) ease-out;
+}
+.toast.good { background: var(--green-dark); }
+.toast.bad { background: var(--coral-dark); }
+@keyframes toast-in { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* --- Celebration --------------------------------------------------------- */
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10vh) rotate(0); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(540deg); opacity: 0; }
+}
+.confetti-host { position: fixed; inset: 0; pointer-events: none; z-index: 70; overflow: hidden; }
+.confetti {
+  position: absolute;
+  width: 11px;
+  height: 16px;
+  border-radius: 2px;
+  animation: confetti-fall linear forwards;
+}
+
+/* --- Tutorial ------------------------------------------------------------ */
+
+.tutorial-dots { display: flex; gap: 0.4rem; justify-content: center; margin-top: 0.6rem; }
+.tutorial-dots span {
+  width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--ink); background: var(--surface-2);
+}
+.tutorial-dots span.on { background: var(--purple); }
+.tutorial-art { max-width: 160px; margin: 0 auto 0.6rem; }
+
+/* --- Small phones -------------------------------------------------------- */
+
+@media (max-width: 360px) {
+  body { font-size: 17px; }
+  .app { padding: 0.45rem 0.45rem 1.2rem; }
+  .board { gap: 0.25rem; }
+  .cell { border-width: 2px; border-radius: 11px; }
+  .tile .tile-name { font-size: 0.44rem; }
+  .prompt { font-size: 1.08rem; }
+  .resource .value { font-size: 1.1rem; }
+}
+
+/* Keep the board usable when the on-screen keyboard shrinks the viewport. */
+@media (max-height: 560px) {
+  .topbar { position: static; }
+}
+
+/* Landscape fallback: still playable, two columns. */
+@media (orientation: landscape) and (min-width: 700px) {
+  .app { max-width: 900px; }
+  .play-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 0.8rem; align-items: start; }
+}

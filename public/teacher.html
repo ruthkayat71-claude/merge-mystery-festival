@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Teacher Dashboard - Merge Mystery</title>
+<link rel="stylesheet" href="/css/common.css">
+<link rel="stylesheet" href="/css/teacher.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%237b4fd3'/%3E%3Cpath d='M22 30h56M22 50h56M22 70h36' stroke='%23fff' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body class="teacher">
+
+<p id="live" class="visually-hidden" role="status" aria-live="polite"></p>
+
+<!-- ===== Login ===== -->
+<section id="view-login" class="login-shell">
+  <div class="card stack">
+    <h1>Teacher sign in</h1>
+    <p class="muted small">Merge Mystery: The Missing Festival</p>
+    <p class="warn-box" id="login-not-configured" hidden>
+      No teacher password is set on the server. Add the <strong>TEACHER_PASSWORD</strong>
+      environment variable in your hosting dashboard, then restart the service.
+    </p>
+    <form id="login-form" class="stack">
+      <div>
+        <label for="input-password">Password</label>
+        <input type="password" id="input-password" autocomplete="current-password" required>
+        <p class="small muted">Set privately as an environment variable. Never type it into a chat.</p>
+      </div>
+      <p class="warn-box" id="login-error" hidden></p>
+      <button type="submit" class="btn-go btn-big btn-block" id="btn-login">Sign in</button>
+    </form>
+  </div>
+</section>
+
+<!-- ===== Dashboard ===== -->
+<section id="view-dash" class="shell" hidden>
+
+  <header class="masthead no-present">
+    <div class="grow">
+      <h1>Merge Mystery &mdash; Teacher Dashboard</h1>
+      <div class="tagline">The Missing Festival &middot; English Communication, Primary 4&ndash;6</div>
+    </div>
+    <div class="status-strip">
+      <span class="status-pill lobby" id="pill-status">No room</span>
+      <span class="status-pill" id="pill-lesson">&ndash;</span>
+      <button type="button" class="btn-ghost" id="btn-present">TV view</button>
+      <button type="button" class="btn-ghost" id="btn-logout">Sign out</button>
+    </div>
+  </header>
+
+  <!-- No room yet -->
+  <div id="panel-no-room" class="card stack">
+    <h2>Step 1: create a room</h2>
+    <p>This makes a short code, a join link and a QR code for your pupils.</p>
+    <button type="button" class="btn-go btn-big" id="btn-create-room">Create a room</button>
+  </div>
+
+  <!-- Join panel -->
+  <div id="panel-join" class="stack" hidden>
+    <div class="join-panel">
+      <div class="qr-box">
+        <div id="qr-holder" aria-hidden="true"></div>
+        <p class="small muted" style="margin:0.5rem 0 0" id="qr-meta"></p>
+      </div>
+      <div class="stack">
+        <div class="card stack">
+          <h2 style="margin:0">Pupils join here</h2>
+          <div><span class="room-code" id="room-code">------</span></div>
+          <p class="join-url" id="join-url">&ndash;</p>
+          <div class="row no-present">
+            <button type="button" class="btn-primary" id="btn-copy-link">Copy join link</button>
+            <button type="button" class="btn-ghost" id="btn-open-png">QR as image</button>
+            <button type="button" class="btn-ghost" id="btn-check-qr">Check this QR code</button>
+          </div>
+          <p id="qr-verdict" class="small" aria-live="polite"></p>
+          <p class="warn-box no-present" id="qr-localhost-warning" hidden>
+            This QR code points at <strong>localhost</strong>, which pupil phones cannot reach.
+            Set the <strong>PUBLIC_BASE_URL</strong> environment variable to your real site address
+            and create the room again.
+          </p>
+        </div>
+        <div class="card stack no-present">
+          <h3 style="margin:0">If a phone will not scan</h3>
+          <p class="small" style="margin:0">
+            Pupils can always type the code above at the site address, or you can send them
+            the join link. Both do exactly the same thing as the QR code.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="no-present stack" id="panel-main" hidden style="margin-top:1rem">
+
+    <nav class="tabs" role="tablist" aria-label="Dashboard sections">
+      <button type="button" class="on" data-tab="control" role="tab">Lesson control</button>
+      <button type="button" data-tab="pupils" role="tab">Pupils &amp; results</button>
+      <button type="button" data-tab="questions" role="tab">Question bank</button>
+      <button type="button" data-tab="help" role="tab">Help</button>
+    </nav>
+
+    <!-- ===== Control tab ===== -->
+    <div data-panel="control" class="stack">
+      <div class="card stack">
+        <h2 style="margin:0">Step 2: run the lesson</h2>
+        <div class="control-grid">
+          <button type="button" class="btn-go" id="btn-start">Start</button>
+          <button type="button" class="btn-warn" id="btn-pause">Pause</button>
+          <button type="button" class="btn-primary" id="btn-resume">Resume</button>
+          <button type="button" class="btn-stop" id="btn-end">End lesson</button>
+        </div>
+        <p class="small muted" style="margin:0">
+          Pause stops every pupil's round timer and freezes their board. Resume gives back
+          exactly the time that was left.
+        </p>
+      </div>
+
+      <div class="card stack">
+        <h2 style="margin:0">Settings</h2>
+        <div class="settings-grid">
+          <div>
+            <label id="label-round">Merge round length</label>
+            <div class="seg" id="seg-round" role="group" aria-labelledby="label-round"></div>
+          </div>
+          <div>
+            <label for="input-lesson">Lesson length (minutes)</label>
+            <input type="number" id="input-lesson" min="5" max="180" step="5">
+            <button type="button" class="btn-ghost btn-block" id="btn-save-lesson" style="margin-top:0.4rem">Save lesson length</button>
+          </div>
+          <div>
+            <label for="input-allowance">Supply taps per round</label>
+            <input type="number" id="input-allowance" min="4" max="24" step="1">
+            <button type="button" class="btn-ghost btn-block" id="btn-save-allowance" style="margin-top:0.4rem">Save taps</button>
+          </div>
+          <div>
+            <label id="label-board">Public game leaderboard</label>
+            <div class="toggle-row">
+              <button type="button" class="btn-ghost" id="btn-leaderboard" aria-labelledby="label-board">Off</button>
+              <span class="small muted">Off by default. Shows game progress only, never English marks.</span>
+            </div>
+          </div>
+        </div>
+        <p class="warn-box" id="settings-error" hidden></p>
+      </div>
+
+      <div class="card stack">
+        <h2 style="margin:0">Class at a glance</h2>
+        <div class="counters" id="counters"></div>
+      </div>
+    </div>
+
+    <!-- ===== Pupils tab ===== -->
+    <div data-panel="pupils" class="stack" hidden>
+      <div class="card stack">
+        <div class="row">
+          <h2 style="margin:0" class="grow">Pupils</h2>
+          <button type="button" class="btn-ghost" id="btn-csv-english">English results (CSV)</button>
+          <button type="button" class="btn-ghost" id="btn-csv-answers">Every answer (CSV)</button>
+          <button type="button" class="btn-ghost" id="btn-csv-game">Game results (CSV)</button>
+        </div>
+        <p class="warn-box" id="storage-warning">
+          Results are held in the server's memory only. Export CSV before you end the lesson,
+          and again if you restart or redeploy the service.
+        </p>
+        <div class="table-scroll">
+          <table class="pupils">
+            <thead>
+              <tr class="group-header">
+                <th colspan="3">Pupil</th>
+                <th colspan="5" class="group-english">English results</th>
+                <th colspan="4" class="group-game">Game results</th>
+                <th>Actions</th>
+              </tr>
+              <tr>
+                <th>Name</th><th>Connection</th><th>Now doing</th>
+                <th class="group-english">Attempted</th>
+                <th class="group-english">Right 1st try</th>
+                <th class="group-english">After retry</th>
+                <th class="group-english">Retries</th>
+                <th class="group-english">1st-try accuracy</th>
+                <th class="group-game">Chapter</th>
+                <th class="group-game">Requests</th>
+                <th class="group-game">Clues</th>
+                <th class="group-game">Mystery</th>
+                <th>&nbsp;</th>
+              </tr>
+            </thead>
+            <tbody id="pupil-rows"></tbody>
+          </table>
+        </div>
+        <p class="small muted" id="pupils-empty">No pupils have joined yet.</p>
+      </div>
+    </div>
+
+    <!-- ===== Questions tab ===== -->
+    <div data-panel="questions" class="stack" hidden>
+      <div class="card stack">
+        <h2 style="margin:0">Question bank</h2>
+        <p class="small muted" id="q-count">&ndash;</p>
+        <p class="warn-box" id="q-problems" hidden></p>
+        <div class="row">
+          <input type="text" id="q-search" placeholder="Search prompts or topics" class="grow">
+          <button type="button" class="btn-ghost" id="btn-q-export">Download bank (JSON)</button>
+        </div>
+        <div class="settings-grid" style="grid-template-columns: minmax(280px,1fr) minmax(320px,1.4fr)">
+          <div class="q-list" id="q-list"></div>
+          <div id="q-editor" class="stack">
+            <p class="muted">Choose a question on the left to edit it.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Help tab ===== -->
+    <div data-panel="help" class="stack" hidden>
+      <div class="card stack">
+        <h2 style="margin:0">Quick teacher guide</h2>
+        <ol>
+          <li><strong>Create a room.</strong> Press "Create a room". A code, link and QR code appear.</li>
+          <li><strong>Show the join screen.</strong> Press "TV view" for a big code and QR code.</li>
+          <li><strong>Pupils join.</strong> They scan the QR code, open the link, or type the code.</li>
+          <li><strong>Press Start.</strong> Each pupil answers two English questions, reads the
+              feedback, then plays a merge round. Everyone gets a round, right or wrong.</li>
+          <li><strong>Watch the Pupils tab.</strong> English results and game results are separate.</li>
+          <li><strong>Before you finish, export CSV.</strong> Nothing is stored permanently.</li>
+        </ol>
+        <h3>Helping a pupil who is stuck</h3>
+        <ul>
+          <li>In the Pupils tab, switch on <strong>Simple merge</strong>. Matching items get highlighted.</li>
+          <li>Switch on <strong>English only</strong> to skip the merge rounds entirely.</li>
+          <li>Pupils have a <strong>Hint</strong> button, a <strong>Recycle</strong> button and a
+              <strong>Helping hand</strong> button that appears if they ever run out of moves.</li>
+        </ul>
+        <h3>What survives what</h3>
+        <ul>
+          <li><strong>Phone refresh:</strong> everything. The pupil returns to the same board.</li>
+          <li><strong>Short Wi-Fi drop:</strong> everything. The page reconnects by itself.</li>
+          <li><strong>Server restart or redeploy:</strong> nothing. Rooms and results are lost. Export CSV first.</li>
+          <li><strong>A later lesson:</strong> nothing carries over. Make a new room.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="toast-host" id="toasts" aria-hidden="true"></div>
+<div id="overlay-host"></div>
+
+<script type="module" src="/js/teacher.js"></script>
+</body>
+</html>

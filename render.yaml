@@ -1,0 +1,38 @@
+# Render Blueprint for Merge Mystery: The Missing Festival.
+#
+# This describes a single free web service. There is no database and no paid
+# add-on, so the running cost is zero. See README.md for what the free plan
+# does and does not keep.
+#
+# You can either import this file as a Blueprint, or create the service by hand
+# using the same settings. The README walks through the manual route, which is
+# easier the first time.
+
+services:
+  - type: web
+    name: merge-mystery-festival
+    runtime: node
+    plan: free
+    region: singapore          # closest Render region to Thailand
+    branch: main
+    rootDir: .
+    buildCommand: npm install  # the project has no dependencies, so this is quick
+    startCommand: node server/index.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Your teacher password. `sync: false` means Render asks you to type it
+      # privately in its dashboard and never stores it in this file or in git.
+      - key: TEACHER_PASSWORD
+        sync: false
+
+      # The public address of this service, with no trailing slash, for example
+      # https://merge-mystery-festival.onrender.com
+      # QR codes are built from this value, so it must be the real address and
+      # never localhost. Set it after the first deploy, when Render has given
+      # you the URL.
+      - key: PUBLIC_BASE_URL
+        sync: false

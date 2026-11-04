@@ -1,0 +1,244 @@
+/* Merge Mystery - shared design tokens and base styles.
+   Portrait-first, large text, strong contrast, generous touch targets. */
+
+:root {
+  --turquoise: #17bfc4;
+  --turquoise-dark: #0b7a7d;
+  --coral: #ff6f5e;
+  --coral-dark: #c53c28;
+  --purple: #7b4fd3;
+  --purple-dark: #4e2b96;
+  --yellow: #ffc53d;
+  --yellow-dark: #9a6b00;
+  --green: #35bd6a;
+  --green-dark: #1a7641;
+
+  --ink: #171a33;
+  --ink-soft: #454a6b;
+  --paper: #fffdf7;
+  --surface: #ffffff;
+  --surface-2: #f3f1ff;
+  --line: #d8d4ea;
+  --sky: #e7f8f8;
+
+  --radius: 16px;
+  --radius-lg: 24px;
+  --tap: 48px;
+  --shadow: 0 3px 0 rgba(23, 26, 51, 0.18);
+  --shadow-lift: 0 8px 20px rgba(23, 26, 51, 0.22);
+
+  --font: "Trebuchet MS", "Segoe UI", "Noto Sans Thai", system-ui, -apple-system, sans-serif;
+  --speed: 1;
+}
+
+/* Respect a pupil's or teacher's reduced-motion choice, and the app toggle. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --speed: 0; }
+}
+body.reduced-motion { --speed: 0; }
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--sky);
+  /* Stop iOS rubber-banding the whole page while the board is being dragged. */
+  overscroll-behavior-y: none;
+  padding:
+    env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+h1, h2, h3 { line-height: 1.2; margin: 0 0 0.4em; }
+h1 { font-size: 1.7rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.1rem; }
+p { margin: 0 0 0.7em; }
+
+/* --- Buttons -------------------------------------------------------------- */
+
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0.6rem 1.1rem;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform calc(120ms * var(--speed)) ease, background-color calc(120ms * var(--speed)) ease;
+  /* Prevents the double-tap zoom delay on phones. */
+  touch-action: manipulation;
+}
+button:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+button:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+/* Keyboard focus must stay clearly visible, but no control is keyboard-only. */
+:focus-visible {
+  outline: 4px solid var(--purple);
+  outline-offset: 2px;
+}
+
+.btn-primary { background: var(--turquoise); color: #06343a; }
+.btn-go { background: var(--green); color: #053d20; }
+.btn-warn { background: var(--yellow); color: #4a3200; }
+.btn-stop { background: var(--coral); color: #4a1108; }
+.btn-ghost { background: var(--surface-2); }
+.btn-big { font-size: 1.15rem; min-height: 56px; padding: 0.8rem 1.4rem; }
+.btn-block { width: 100%; }
+
+/* --- Cards and layout ----------------------------------------------------- */
+
+.card {
+  background: var(--surface);
+  border: 3px solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.stack > * + * { margin-top: 0.75rem; }
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.row-tight { display: flex; gap: 0.35rem; align-items: center; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.center { text-align: center; }
+.muted { color: var(--ink-soft); }
+.small { font-size: 0.9rem; }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* --- Form controls -------------------------------------------------------- */
+
+label { font-weight: 700; display: block; margin-bottom: 0.25rem; }
+
+input[type="text"], input[type="password"], input[type="number"], select {
+  font-family: inherit;
+  font-size: 1.05rem;
+  min-height: var(--tap);
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+input:disabled, select:disabled { background: #eceaf4; }
+
+/* --- Status chips --------------------------------------------------------- */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chip-good { background: #d8f7e4; }
+.chip-warn { background: #fff0cc; }
+.chip-bad { background: #ffdfd9; }
+
+/* Each status chip carries a text label and a shape mark, so the meaning never
+   depends on colour alone. */
+.chip::before { font-weight: 900; }
+.chip-good::before { content: "\2713"; }
+.chip-warn::before { content: "\25B2"; }
+.chip-bad::before { content: "\2715"; }
+
+/* --- Progress bars -------------------------------------------------------- */
+
+.bar {
+  height: 20px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+  transition: width calc(400ms * var(--speed)) ease;
+  /* A diagonal texture means progress reads without relying on colour. */
+  background-image: repeating-linear-gradient(
+    45deg, rgba(255,255,255,0.35) 0 6px, transparent 6px 12px);
+}
+.bar-timer > span { background-color: var(--turquoise); }
+.bar-low > span { background-color: var(--coral); }
+
+/* --- Artwork -------------------------------------------------------------- */
+
+.art { display: block; width: 100%; height: auto; }
+
+/* --- Messages ------------------------------------------------------------- */
+
+.notice {
+  border: 3px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.9rem;
+  font-weight: 700;
+  background: var(--surface-2);
+}
+.notice-good { background: #d8f7e4; }
+.notice-bad { background: #ffdfd9; }
+.notice-info { background: #e3f0ff; }
+
+/* --- Dialogs -------------------------------------------------------------- */
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 26, 51, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+}
+.sheet {
+  background: var(--surface);
+  border: 4px solid var(--ink);
+  border-radius: var(--radius-lg);
+  padding: 1.1rem;
+  width: 100%;
+  max-width: 440px;
+  max-height: 86vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lift);
+  animation: sheet-in calc(220ms * var(--speed)) ease-out;
+}
+@keyframes sheet-in {
+  from { transform: translateY(16px) scale(0.97); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+[hidden] { display: none !important; }
